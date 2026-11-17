@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aiko & Gabs</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.383.0/dist/umd/lucide.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Quicksand', system-ui, sans-serif; }
+  .fade { animation: fade .35s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-violet-50 via-white to-sky-50 text-slate-700">
+
+<!-- =====================================================
+     🔥 CONFIGURAÇÃO DO FIREBASE (COM SUAS CHAVES)
+     ===================================================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBHBynTrX2aSD_kl_un3SFeNQ3T0ZKfjhM",
+    authDomain: "aikoegabs-aeg.firebaseapp.com",
+    projectId: "aikoegabs-aeg",
+    storageBucket: "aikoegabs-aeg.firebasestorage.app",
+    messagingSenderId: "155387373142",
+    appId: "1:155387373142:web:0445c3c68d5af9e3e67df7"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Expondo as funções para o escopo global do site
+  window.db = db;
+  window.colEstoque = collection(db, "estoque");
+  window.colJoiners = collection(db, "joiners");
+  window.setDoc = setDoc;
+  window.doc = doc;
+  window.deleteDoc = deleteDoc;
+  window.onSnapshot = onSnapshot;
+  window.collection = collection;
+  window.getDocs = getDocs;
+
+  // Iniciar carregamento em tempo real assim que o Firebase conectar
+  window.iniciarSincronizacaoRealtime();
+</script>
+
+<script>
+const LOJA = {
+  nome: "Aiko & Gabs",
+  subtitulo: "",
+  logoUrl: "", 
+  whatsapp: "https://wa.me/5511984196885"
+};
+
+let ESTOQUE_GERAL = [];
+let JOINERS = {};
+
+// Sincronização em tempo real com o Firebase
+function iniciarSincronizacaoRealtime() {
+  if (!window.db) return;
+
+  // Ouvir mudanças no Estoque
+  window.onSnapshot(window.colEstoque, (snapshot) => {
+    ESTOQUE_GERAL = [];
+    snapshot.forEach((doc) => {
+      ESTOQUE_GERAL.push({ id: doc.id, ...doc.data() });
+    });
+    renderVitrineDisponiveis();
+    if (document.getElementById('admin').classList.contains('fade') === false && !document.getElementById('admin').classList.contains('hidden')) {
+      renderTabelaAdmin();
+    }
+  });
+
+  // Ouvir mudanças nas Clientes
+  window.onSnapshot(window.colJoiners, (snapshot) => {
+    JOINERS = {};
+    snapshot.forEach((doc) => {
+      JOINERS[doc.id] = doc.data();
+    });
+  });
+}
+</script>
+<!-- ===================================================== -->
+
+<main class="max-w-4xl mx-auto px-4 py-8">
+
+  <!-- HOME -->
+  <section id="home" class="fade text-center pt-6">
+    <div class="flex justify-center mb-4">
+      <div id="logoContainer" class="max-w-[220px] sm:max-w-[280px] w-full"></div>
+    </div>
+
+    <!-- Botão Disponíveis Centralizado -->
+    <div class="flex justify-center mt-4">
+      <button onclick="show('vitrine')" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-base font-bold text-white bg-gradient-to-r from-violet-400 to-sky-400 shadow-lg shadow-violet-300/60 hover:scale-105 active:scale-95 transition w-60">
+        <i data-lucide="heart" class="w-5 h-5"></i> Disponíveis
+      </button>
+    </div>
+
+    <!-- Caixa de Login do Joiner -->
+    <div class="mt-8 max-w-md mx-auto bg-white/85 backdrop-blur rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100 text-left">
+      <h2 class="font-bold text-violet-600 flex items-center gap-2"><i data-lucide="user-round" class="w-5 h-5"></i> Área do Joiner</h2>
+      <p class="text-sm text-slate-500 mt-1">Entre com seu usuário e senha para ver seus pedidos.</p>
+      
+      <form onsubmit="login(event)" class="mt-4 flex flex-col gap-3">
+        <input id="user" placeholder="@seuusuario" autocomplete="off"
+          class="w-full px-4 py-3 rounded-2xl bg-violet-50 border border-violet-100 focus:outline-none focus:ring-2 focus:ring-sky-300">
+        <input id="pass" type="password" placeholder="Sua senha"
+          class="w-full px-4 py-3 rounded-2xl bg-violet-50 border border-violet-100 focus:outline-none focus:ring-2 focus:ring-sky-300">
+        <button class="w-full py-3 rounded-2xl bg-violet-500 text-white font-bold hover:bg-violet-600 transition">Entrar</button>
+      </form>
+      <p id="erro" class="hidden mt-2 text-sm text-rose-400 text-center">Usuário ou senha incorretos 💜</p>
+    </div>
+
+    <!-- Botão Admin Menor e Embaixo de Tudo -->
+    <div class="flex justify-center mt-8">
+      <button onclick="tentarEntrarAdmin()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-violet-400 hover:text-violet-600 bg-white/50 border border-violet-100 shadow-sm hover:bg-violet-50 transition">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Aiko & Gabs (Admin)
+      </button>
+    </div>
+  </section>
+
+  <!-- VITRINE DE DISPONÍVEIS (Pública) -->
+  <section id="vitrine" class="hidden fade">
+    <button onclick="show('home')" class="back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
+    <div class="mb-6">
+      <h2 class="text-3xl font-bold text-violet-600 mb-1">Disponíveis</h2>
+      <p class="text-slate-500">Itens disponíveis para compra.</p>
+    </div>
+    <div id="gridDisponiveis" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+  </section>
+
+  <!-- PAINEL ADMIN -->
+  <section id="admin" class="hidden fade">
+    <div class="flex items-center justify-between mb-4">
+      <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Sair do Admin</button>
+      <button onclick="abrirModalClientes()" class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-violet-100 text-violet-700 text-xs font-bold hover:bg-violet-200 transition shadow-sm">
+        <i data-lucide="users" class="w-4 h-4"></i> Ver Todas as Clientes Cadastradas
+      </button>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div>
+        <h2 class="text-3xl font-bold text-violet-600">Painel Privativo · Aiko & Gabs 💜</h2>
+        <p class="text-slate-500 text-sm">Cadastre photocards, clientes e organize caixas, lotes e taxas.</p>
+      </div>
+    </div>
+
+    <!-- Bloco de Cadastros Rápidos -->
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+      
+      <!-- Cadastrar Novo Photocard -->
+      <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
+        <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5"></i> Cadastrar Novo Photocard</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-bold text-slate-500">Nome do Item / Photocard</label>
+            <input id="pcNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-bold text-slate-500">Preço (R$)</label>
+              <input id="pcPreco" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500">Caixa / Lote</label>
+              <input id="pcLocal" value="Caixa Thai" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-violet-100">
+            <div>
+              <label class="text-xs font-bold text-slate-500">Frete Inter (Opcional)</label>
+              <input id="pcFrete" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500">Taxa RF (Opcional)</label>
+              <input id="pcTaxaRf" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-500">Foto do Photocard</label>
+            <input id="pcFotoInput" type="file" accept="image/*" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <button onclick="adicionarNovoPCAdmin()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition mt-2">
+            Salvar Photocard no Estoque
+          </button>
+        </div>
+      </div>
+
+      <!-- Cadastrar Nova Cliente -->
+      <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
+        <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5"></i> Cadastrar Nova Cliente</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-bold text-slate-500">Usuário</label>
+            <input id="novoUser" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            <p class="text-[11px] text-slate-400 mt-1">Pode colocar com ou sem @ (ex: @camily ou camily)</p>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">Nome Completo</label>
+            <input id="novoNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">Senha de Acesso</label>
+            <input id="novaSenha" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <button onclick="cadastrarJoinerAdmin()" class="w-full py-3 rounded-xl bg-sky-500 text-white font-bold text-sm shadow hover:bg-sky-600 transition mt-2">
+            Cadastrar Cliente
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tabela de Gerenciamento de Estoque por Caixas -->
+    <div class="space-y-4">
+      <h3 class="font-bold text-xl text-violet-700 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5"></i> Gerenciamento de Estoque por Caixas</h3>
+      <div id="containerTabelaAdmin"></div>
+    </div>
+  </section>
+
+  <!-- ÁREA DO JOINER (CLIENTE) -->
+  <section id="joiner" class="hidden fade">
+    <button onclick="show('home')" class="back"><i data-lucide="log-out" class="w-4 h-4"></i> Sair</button>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h2 class="text-3xl font-bold text-violet-600">Olá, <span id="nomeJoiner"></span>! 💜</h2>
+      
+      <!-- Controles de Layout (Grade / Lista) -->
+      <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
+        <button onclick="mudarLayout('grid')" id="btnLayoutGrid" class="p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="layout-grid" class="w-4 h-4"></i> Grade</button>
+        <button onclick="mudarLayout('list')" id="btnLayoutList" class="p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="list" class="w-4 h-4"></i> Lista</button>
+      </div>
+    </div>
+
+    <!-- Abas e Filtros -->
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex gap-2 bg-white/70 p-1.5 rounded-full border border-violet-100 w-full sm:w-fit">
+        <button id="tab1" onclick="tab(1)" class="tabbtn flex-1 sm:flex-none">Disponíveis da Loja</button>
+        <button id="tab2" onclick="tab(2)" class="tabbtn flex-1 sm:flex-none">Meus Itens Comprados</button>
+      </div>
+      
+      <!-- Caixa de Pesquisa -->
+      <div class="w-full sm:w-72">
+        <input id="inputBusca" oninput="atualizarFiltroJoiner()" placeholder="🔍 Pesquisar photocard ou caixa..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+      </div>
+    </div>
+
+    <div id="containerAreaCliente" class="mt-6"></div>
+  </section>
+
+  <footer class="mt-16 text-center text-xs text-slate-400">
+    © <span id="ano"></span> Aiko & Gabs · feito com 💜💙
+  </footer>
+</main>
+
+<!-- MODAL DE LISTA DE TODAS AS CLIENTES -->
+<div id="modalListaClientes" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5"></i> Clientes Cadastradas (<span id="totalClientesCount">0</span>)</h3>
+      <button onclick="fecharModalClientes()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div id="containerListaTodasClientes" class="max-h-80 overflow-y-auto space-y-2 pr-1 divide-y divide-violet-50"></div>
+  </div>
+</div>
+
+<!-- MODAL DE SELEÇÃO DE STATUS / CLIENTE COM PESQUISA -->
+<div id="modalStatus" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="user-check" class="w-5 h-5"></i> Alterar Status / Destino</h3>
+      <button onclick="fecharModalStatus()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="grid grid-cols-2 gap-2 mb-4">
+      <button onclick="alterarStatusModal('standby')" class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+        <i data-lucide="clock" class="w-4 h-4"></i> Standby (Oculto)
+      </button>
+      <button onclick="alterarStatusModal('disponivel')" class="py-2.5 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+        <i data-lucide="sparkles" class="w-4 h-4"></i> Disponível (Vitrine)
+      </button>
+    </div>
+
+    <!-- Campo de Pesquisa de Cliente -->
+    <div class="mb-3">
+      <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Cliente:</label>
+      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da cliente..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+    </div>
+
+    <!-- Lista Filtrável de Clientes -->
+    <div id="listaClientesModal" class="max-h-56 overflow-y-auto space-y-1 pr-1 divide-y divide-violet-50"></div>
+  </div>
+</div>
+
+<!-- MODAL DE ZOOM DE FOTO -->
+<div id="modalZoom" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50" onclick="fecharZoom()">
+  <div class="relative max-w-xl w-full max-h-[90vh] flex items-center justify-center" onclick="event.stopPropagation()">
+    <button onclick="fecharZoom()" class="absolute -top-12 right-0 text-white font-bold text-2xl hover:text-violet-300 transition">✕ Fechar</button>
+    <img id="imgZoom" src="" class="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain border border-white/10">
+  </div>
+</div>
+
+<style>
+  .back { display:inline-flex; align-items:center; gap:.4rem; font-size:.875rem; font-weight:700; color:#8b5cf6; }
+  .back:hover { color:#0ea5e9; }
+  .tabbtn { padding:.6rem 1.2rem; border-radius:9999px; font-weight:700; font-size:.9rem; color:#8b5cf6; transition:.2s; }
+  .tabbtn.on { background:linear-gradient(90deg,#a78bfa,#7dd3fc); color:#fff; box-shadow:0 4px 12px #c4b5fd80; }
+  .upload-btn { position:absolute; bottom:6px; right:6px; background:rgba(255,255,255,0.9); backdrop-filter:blur(4px); padding:3px 7px; border-radius:9999px; font-size:10px; font-weight:bold; color:#8b5cf6; cursor:pointer; z-index:10; display:flex; align-items:center; gap:2px; }
+  .upload-btn:hover { background:#8b5cf6; color:#fff; }
+  .zoomable { cursor: zoom-in; transition: transform 0.2s; }
+  .zoomable:hover { transform: scale(1.02); }
+</style>
+
+<script>
+const brl = v => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+let clienteAtualKey = "";
+let layoutAtual = "grid"; 
+let abaAtualJoiner = 1;
+let caixasExpandidas = {}; 
+let caixasAdminExpandidas = {}; 
+let cardEditandoId = null;
+
+function tentarEntrarAdmin() {
+  const senhaMestra = prompt("Digite a senha de Admin da Aiko & Gabs:");
+  if (senhaMestra === "aikogabs2026") {
+    show('admin');
+    renderTabelaAdmin();
+  } else if (senhaMestra !== null) {
+    alert("Senha incorreta! 💜");
+  }
+}
+
+function abrirZoom(src) {
+  if (!src) return;
+  $("imgZoom").src = src;
+  $("modalZoom").classList.remove("hidden");
+}
+
+function fecharZoom() {
+  $("modalZoom").classList.add("hidden");
+  $("imgZoom").src = "";
+}
+
+const renderImgBox = (src, id) => `
+  <div class="relative w-full h-full bg-gradient-to-br from-violet-100 to-sky-100 flex items-center justify-center overflow-hidden group">
+    ${src ? `<img src="${esc(src)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(src)}')">` : `<span class="text-3xl text-violet-300">🎴</span>`}
+    <label class="upload-btn" title="Trocar foto">
+      📁 Foto
+      <input type="file" accept="image/*" class="hidden" onchange="mudarFotoEstoque(event, '${id}')">
+    </label>
+  </div>
+`;
+
+async function mudarFotoEstoque(event, id) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const pc = ESTOQUE_GERAL.find(x => x.id === id);
+    if (pc && window.db) {
+      pc.foto = e.target.result;
+      await window.setDoc(window.doc(window.db, "estoque", id), pc);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function adicionarNovoPCAdmin() {
+  const nome = $("pcNome").value.trim();
+  const preco = parseFloat($("pcPreco").value) || 0;
+  const local = $("pcLocal").value.trim() || "Caixa Thai";
+  const freteInter = parseFloat($("pcFrete").value) || 0;
+  const taxaRf = parseFloat($("pcTaxaRf").value) || 0;
+  const fileInput = $("pcFotoInput");
+
+  if (!nome) return alert("Digite o nome do photocard!");
+
+  if (fileInput.files && fileInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      salvarNovoItemNoEstoque(nome, preco, local, freteInter, taxaRf, e.target.result);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    salvarNovoItemNoEstoque(nome, preco, local, freteInter, taxaRf, "");
+  }
+}
+
+async function salvarNovoItemNoEstoque(nome, preco, local, freteInter, taxaRf, fotoBase64) {
+  const id = "pc_" + Date.now();
+  const novoCard = {
+    id,
+    nome,
+    foto: fotoBase64,
+    preco,
+    status: "standby",
+    local,
+    freteInter,
+    taxaRf
+  };
+  
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "estoque", id), novoCard);
+  }
+
+  $("pcNome").value = "";
+  $("pcPreco").value = "";
+  $("pcFrete").value = "";
+  $("pcTaxaRf").value = "";
+  $("pcFotoInput").value = "";
+  alert("Photocard cadastrado em Standby com sucesso!");
+}
+
+async function editarPC(id) {
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (!pc) return;
+
+  const novoNome = prompt("Nome do photocard:", pc.nome);
+  if (novoNome === null) return;
+  const novoPreco = parseFloat(prompt("Preço (R$):", pc.preco));
+  if (isNaN(novoPreco)) return;
+  const novoLocal = prompt("Nome da Caixa / Lote (Ex: Caixa Thai):", pc.local);
+  if (novoLocal === null) return;
+  const novoFrete = parseFloat(prompt("Frete Inter (0 se não tiver):", pc.freteInter || 0)) || 0;
+  const novaTaxaRf = parseFloat(prompt("Taxa RF (0 se não tiver):", pc.taxaRf || 0)) || 0;
+
+  pc.nome = novoNome;
+  pc.preco = novoPreco;
+  pc.local = novoLocal;
+  pc.freteInter = novoFrete;
+  pc.taxaRf = novaTaxaRf;
+
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "estoque", id), pc);
+  }
+  alert("Photocard atualizado com sucesso!");
+}
+
+async function cadastrarJoinerAdmin() {
+  let user = $("novoUser").value.trim().toLowerCase().replace(/^@/, "");
+  const nome = $("novoNome").value.trim();
+  const senha = $("novaSenha").value.trim();
+
+  if (!user || !nome || !senha) return alert("Preencha todos os campos do cliente!");
+  if (JOINERS[user]) return alert("Esse usuário já está cadastrado!");
+
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "joiners", user), { nome, senha });
+  }
+
+  $("novoUser").value = "";
+  $("novoNome").value = "";
+  $("novaSenha").value = "";
+  alert("Cliente cadastrada com sucesso!");
+}
+
+async function excluirPC(id) {
+  if (confirm("Deseja realmente excluir este photocard?")) {
+    if (window.db) {
+      await window.deleteDoc(window.doc(window.db, "estoque", id));
+    }
+  }
+}
+
+// =====================================================
+// MODAL DE LISTA DE TODAS AS CLIENTES
+// =====================================================
+function abrirModalClientes() {
+  const clientesKeys = Object.keys(JOINERS);
+  $("totalClientesCount").textContent = clientesKeys.length;
+  
+  if (!clientesKeys.length) {
+    $("containerListaTodasClientes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhuma cliente cadastrada ainda.</p>`;
+  } else {
+    let html = "";
+    clientesKeys.forEach(k => {
+      const cli = JOINERS[k];
+      const qtdCards = ESTOQUE_GERAL.filter(x => x.status === k).length;
+      html += `
+        <div class="p-3 bg-violet-50/40 rounded-2xl flex items-center justify-between">
+          <div>
+            <span class="font-bold text-sm text-violet-700 block">@${esc(k)}</span>
+            <span class="text-xs text-slate-600">${esc(cli.nome)}</span>
+            <span class="text-[11px] text-slate-400 block mt-0.5">Senha: <code class="bg-white px-1.5 py-0.5 rounded border border-violet-100">${esc(cli.senha)}</code></span>
+          </div>
+          <span class="px-3 py-1 bg-violet-500 text-white rounded-full text-xs font-bold">${qtdCards} ${qtdCards === 1 ? 'card' : 'cards'}</span>
+        </div>
+      `;
+    });
+    $("containerListaTodasClientes").innerHTML = html;
+  }
+  $("modalListaClientes").classList.remove("hidden");
+}
+
+function fecharModalClientes() {
+  $("modalListaClientes").classList.add("hidden");
+}
+
+// =====================================================
+// MODAL DE PESQUISA DE STATUS / CLIENTE
+// =====================================================
+function abrirModalStatus(id) {
+  cardEditandoId = id;
+  $("inputFiltroCliente").value = "";
+  renderizarListaClientesModal("");
+  $("modalStatus").classList.remove("hidden");
+  setTimeout(() => $("inputFiltroCliente").focus(), 100);
+}
+
+function fecharModalStatus() {
+  $("modalStatus").classList.add("hidden");
+  cardEditandoId = null;
+}
+
+function filtrarListaClientesModal(termo) {
+  renderizarListaClientesModal(termo.toLowerCase());
+}
+
+function renderizarListaClientesModal(filtro) {
+  const clientesKeys = Object.keys(JOINERS);
+  let html = "";
+
+  if (!clientesKeys.length) {
+    $("listaClientesModal").innerHTML = `<p class="text-xs text-slate-400 p-2 text-center">Nenhuma cliente cadastrada ainda.</p>`;
+    return;
+  }
+
+  clientesKeys.forEach(k => {
+    const cli = JOINERS[k];
+    const textoBusca = `${k} ${cli.nome}`.toLowerCase();
+    if (filtro && !textoBusca.includes(filtro)) return;
+
+    html += `
+      <button onclick="alterarStatusModal('${k}')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-violet-50 flex items-center justify-between transition group">
+        <div>
+          <span class="font-bold text-sm text-violet-700 block">@${esc(k)}</span>
+          <span class="text-xs text-slate-500">${esc(cli.nome)}</span>
+        </div>
+        <span class="text-xs font-bold text-violet-500 bg-violet-100 px-2.5 py-1 rounded-lg group-hover:bg-violet-500 group-hover:text-white transition">Vincular</span>
+      </button>
+    `;
+  });
+
+  $("listaClientesModal").innerHTML = html || `<p class="text-xs text-slate-400 p-2 text-center">Nenhuma cliente encontrada.</p>`;
+}
+
+async function alterarStatusModal(novoStatus) {
+  if (!cardEditandoId) return;
+  const pc = ESTOQUE_GERAL.find(x => x.id === cardEditandoId);
+  if (pc && window.db) {
+    pc.status = novoStatus;
+    await window.setDoc(window.doc(window.db, "estoque", pc.id), pc);
+  }
+  fecharModalStatus();
+}
+
+function toggleCaixaAdmin(nomeCaixa) {
+  caixasAdminExpandidas[nomeCaixa] = !caixasAdminExpandidas[nomeCaixa];
+  renderTabelaAdmin();
+}
+
+function renderTabelaAdmin() {
+  if (!ESTOQUE_GERAL.length) {
+    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-3xl p-6 text-center text-slate-400 border border-violet-100">Nenhum photocard cadastrado no estoque ainda.</div>`;
+    return;
+  }
+
+  let caixasMap = {};
+  ESTOQUE_GERAL.forEach(pc => {
+    const caixaNome = pc.local || "Caixa Geral";
+    if (!caixasMap[caixaNome]) caixasMap[caixaNome] = [];
+    caixasMap[caixaNome].push(pc);
+  });
+
+  let htmlCaixas = "";
+  for (let caixaNome in caixasMap) {
+    const listaItens = caixasMap[caixaNome];
+    const qtd = listaItens.length;
+    const aberta = caixasAdminExpandidas[caixaNome] !== false;
+
+    let tabelaItensHtml = "";
+    if (aberta) {
+      tabelaItensHtml = `
+        <div class="overflow-x-auto p-4 bg-violet-50/30">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-violet-100 text-xs font-bold text-violet-400 uppercase">
+                <th class="py-3 px-2">Foto</th>
+                <th class="py-3 px-2">Nome / Preço</th>
+                <th class="py-3 px-2">Status / Destino</th>
+                <th class="py-3 px-2 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm divide-y divide-violet-50">
+              ${listaItens.map(pc => {
+                let badgeStatus = "";
+                if (pc.status === 'standby') {
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-800 font-bold text-xs">⏳ Standby (Oculto)</span>`;
+                } else if (pc.status === 'disponivel') {
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs">✨ Disponível (Vitrine)</span>`;
+                } else {
+                  const cli = JOINERS[pc.status];
+                  const nomeCli = cli ? cli.nome : pc.status;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-100 text-violet-800 font-bold text-xs">👤 @${esc(pc.status)} (${esc(nomeCli)})</span>`;
+                }
+
+                return `
+                  <tr class="hover:bg-violet-50/40 transition">
+                    <td class="py-3 px-2 w-14">
+                      <div class="w-12 h-16 rounded-xl overflow-hidden relative shadow-sm">${renderImgBox(pc.foto, pc.id)}</div>
+                    </td>
+                    <td class="py-3 px-2">
+                      <div class="font-bold text-slate-700">${esc(pc.nome)}</div>
+                      <div class="text-xs text-violet-600 font-bold">${brl(pc.preco)}</div>
+                    </td>
+                    <td class="py-3 px-2">
+                      <button onclick="abrirModalStatus('${pc.id}')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-violet-200 shadow-sm hover:bg-violet-50 transition text-xs font-bold text-violet-700">
+                        ${badgeStatus}
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 ml-1"></i>
+                      </button>
+                    </td>
+                    <td class="py-3 px-2 text-right space-x-1">
+                      <button onclick="editarPC('${pc.id}')" class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-600 text-xs font-bold hover:bg-violet-200 transition">✏️ Editar</button>
+                      <button onclick="excluirPC('${pc.id}')" class="text-rose-400 hover:text-rose-600 font-bold p-1" title="Excluir item">✕</button>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    htmlCaixas += `
+      <div class="bg-white rounded-3xl shadow-md shadow-violet-100 border border-violet-100 overflow-hidden mb-4">
+        <button onclick="toggleCaixaAdmin('${esc(caixaNome)}')" class="w-full px-5 py-4 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
+            <span class="font-bold text-base text-violet-800">${esc(caixaNome)}</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
+          </div>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
+        </button>
+        ${tabelaItensHtml}
+      </div>
+    `;
+  }
+
+  $("containerTabelaAdmin").innerHTML = htmlCaixas;
+  lucide.createIcons();
+}
+
+function gerarLinkZap(p) {
+  const txt = encodeURIComponent(`Olá! Tenho interesse nesse card:\n✨ *${p.nome}*\n💰 Preço: ${brl(p.preco)}\n📦 Lote: ${p.local}`);
+  return `${LOJA.whatsapp}?text=${txt}`;
+}
+
+function renderCardDisponivel(p) {
+  return `
+    <article class="bg-white rounded-3xl overflow-hidden shadow-md shadow-violet-100 border border-violet-100 flex flex-col justify-between">
+      <div>
+        <div class="px-3 py-1.5 bg-gradient-to-r from-violet-100 to-sky-100 text-[10px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
+          <i data-lucide="package" class="w-3 h-3"></i>${esc(p.local)}
+        </div>
+        <div class="aspect-[3/4] relative bg-violet-50">
+          ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
+        </div>
+        <div class="p-3">
+          <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
+          <p class="mt-2 text-lg font-bold text-violet-600">${brl(p.preco)}</p>
+        </div>
+      </div>
+      <div class="p-3 pt-0">
+        <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+          <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+function renderVitrineDisponiveis() {
+  const disponiveis = ESTOQUE_GERAL.filter(x => x.status === "disponivel");
+  if (!disponiveis.length) {
+    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full">Nenhum item disponível no momento 💜</p>`;
+    return;
+  }
+  $("gridDisponiveis").innerHTML = disponiveis.map(renderCardDisponivel).join("");
+  lucide.createIcons();
+}
+
+function login(e) {
+  e.preventDefault();
+  const key = $("user").value.trim().replace(/^@/, "").toLowerCase();
+  const pass = $("pass").value;
+  const j = JOINERS[key];
+  
+  const isValid = j && j.senha === pass;
+  $("erro").classList.toggle("hidden", isValid);
+  if (!isValid) return;
+
+  clienteAtualKey = key;
+  $("nomeJoiner").textContent = j.nome;
+  tab(1);
+  show("joiner");
+}
+
+function mudarLayout(tipo) {
+  layoutAtual = tipo;
+  $("btnLayoutGrid").className = tipo === 'grid' ? "p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition" : "p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition";
+  $("btnLayoutList").className = tipo === 'list' ? "p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition" : "p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition";
+  renderizarConteudoCliente();
+}
+
+function tab(n) {
+  abaAtualJoiner = n;
+  $("tab1").classList.toggle("on", n === 1);
+  $("tab2").classList.toggle("on", n === 2);
+  $("inputBusca").value = "";
+  renderizarConteudoCliente();
+}
+
+function atualizarFiltroJoiner() {
+  renderizarConteudoCliente();
+}
+
+function toggleCaixa(nomeCaixa) {
+  caixasExpandidas[nomeCaixa] = !caixasExpandidas[nomeCaixa];
+  renderizarConteudoCliente();
+}
+
+function renderizarConteudoCliente() {
+  const busca = $("inputBusca").value.toLowerCase();
+  
+  if (abaAtualJoiner === 1) {
+    let itens = ESTOQUE_GERAL.filter(x => x.status === "disponivel");
+    if (busca) itens = itens.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
+
+    if (!itens.length) {
+      $("containerAreaCliente").innerHTML = `<p class="text-slate-400">Nenhum item disponível encontrado 💜</p>`;
+      return;
+    }
+
+    if (layoutAtual === 'grid') {
+      $("containerAreaCliente").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">${itens.map(renderCardDisponivel).join("")}</div>`;
+    } else {
+      $("containerAreaCliente").innerHTML = `<div class="space-y-3">${itens.map(p => `
+        <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-20 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-xl text-violet-300">🎴</div>`}
+            </div>
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
+              <h3 class="font-bold text-sm text-slate-800 mt-1">${esc(p.nome)}</h3>
+              <p class="text-base font-bold text-violet-600 mt-1">${brl(p.preco)}</p>
+            </div>
+          </div>
+          <a href="${gerarLinkZap(p)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0">
+            <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
+          </a>
+        </article>`).join("")}</div>`;
+    }
+
+  } else {
+    let meusPCs = ESTOQUE_GERAL.filter(x => x.status === clienteAtualKey);
+    if (busca) meusPCs = meusPCs.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
+
+    if (!meusPCs.length) {
+      $("containerAreaCliente").innerHTML = `<p class="text-slate-400">Você ainda não tem itens comprados vinculados 💜</p>`;
+      return;
+    }
+
+    let caixasMap = {};
+    meusPCs.forEach(p => {
+      const caixaNome = p.local || "Caixa Geral";
+      if (!caixasMap[caixaNome]) caixasMap[caixaNome] = [];
+      caixasMap[caixaNome].push(p);
+    });
+
+    let htmlCaixas = "";
+    for (let caixaNome in caixasMap) {
+      const listaItens = caixasMap[caixaNome];
+      const qtd = listaItens.length;
+      const aberta = caixasExpandidas[caixaNome] !== false;
+
+      let conteudoCaixaHtml = "";
+      if (aberta) {
+        if (layoutAtual === 'grid') {
+          conteudoCaixaHtml = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-violet-50/30">${listaItens.map(p => {
+            const fInter = Number(p.freteInter) || 0;
+            const tRf = Number(p.taxaRf) || 0;
+            const totalItem = Number(p.preco) + fInter + tRf;
+            
+            let taxasInfo = "";
+            if (fInter > 0 || tRf > 0) {
+              taxasInfo = `<div class="mt-2 pt-2 border-t border-dashed border-violet-100 text-xs text-slate-500 space-y-1 font-mono">
+                ${fInter > 0 ? `<div>Frete Inter: <b>${brl(fInter)}</b> (Pendente)</div>` : ""}
+                ${tRf > 0 ? `<div>Taxa RF: <b>${brl(tRf)}</b> (Pendente)</div>` : ""}
+              </div>`;
+            }
+
+            return `
+              <article class="bg-white rounded-3xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
+                <div>
+                  <div class="aspect-[3/4] relative bg-violet-50">
+                    ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
+                  </div>
+                  <div class="p-3">
+                    <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
+                    <p class="mt-2 text-lg font-bold text-violet-600">${brl(totalItem)} <span class="text-[10px] text-slate-400">total</span></p>
+                    ${taxasInfo}
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join("")}</div>`;
+        } else {
+          conteudoCaixaHtml = `<div class="space-y-2 p-4 bg-violet-50/30">${listaItens.map(p => {
+            const fInter = Number(p.freteInter) || 0;
+            const tRf = Number(p.taxaRf) || 0;
+            const totalItem = Number(p.preco) + fInter + tRf;
+
+            let taxasBadge = "";
+            if (fInter > 0 || tRf > 0) {
+              taxasBadge = `<div class="text-xs text-slate-500 mt-0.5 font-mono">Taxas: ${fInter > 0 ? `Frete (${brl(fInter)}) ` : ""}${tRf > 0 ? `RF (${brl(tRf)})` : ""}</div>`;
+            }
+
+            return `
+              <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-16 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
+                    ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-sm text-slate-800">${esc(p.nome)}</h3>
+                    ${taxasBadge}
+                    <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join("")}</div>`;
+        }
+      }
+
+      htmlCaixas += `
+        <div class="bg-white rounded-3xl shadow-md shadow-violet-100 border border-violet-100 overflow-hidden mb-4">
+          <button onclick="toggleCaixa('${esc(caixaNome)}')" class="w-full px-5 py-4 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
+              <span class="font-bold text-base text-violet-800">${esc(caixaNome)}</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
+          </button>
+          ${conteudoCaixaHtml}
+        </div>
+      `;
+    }
+
+    $("containerAreaCliente").innerHTML = htmlCaixas;
+  }
+
+  lucide.createIcons();
+}
+
+function show(id) {
+  ["home", "vitrine", "admin", "joiner"].forEach(s => $(s).classList.toggle("hidden", s !== id));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  lucide.createIcons();
+}
+
+if (LOJA.logoUrl) {
+  $("logoContainer").innerHTML = `<img src="${esc(LOJA.logoUrl)}" alt="${esc(LOJA.nome)}" class="w-full h-auto object-contain drop-shadow-sm">`;
+} else {
+  $("logoContainer").innerHTML = `<h1 class="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-violet-500 to-sky-500 bg-clip-text text-transparent">${esc(LOJA.nome)}</h1>`;
+}
+
+$("ano").textContent = new Date().getFullYear();
+document.title = LOJA.nome;
+renderVitrineDisponiveis();
+lucide.createIcons();
+</script>
+</body>
+</html>

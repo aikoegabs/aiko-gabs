@@ -61,7 +61,6 @@ let JOINERS = {};
 function iniciarSincronizacaoRealtime() {
   if (!window.db) return;
 
-  // Sincronização em tempo real do Estoque
   window.onSnapshot(window.colEstoque, (snapshot) => {
     ESTOQUE_GERAL = [];
     snapshot.forEach((doc) => {
@@ -69,14 +68,12 @@ function iniciarSincronizacaoRealtime() {
     });
     renderVitrineDisponiveis();
     
-    // Se estiver no painel admin, atualiza a tabela automaticamente sem perder a sessão!
     const adminSec = document.getElementById('admin');
     if (adminSec && !adminSec.classList.contains('hidden')) {
       renderTabelaAdmin();
     }
   });
 
-  // Sincronização em tempo real das Clientes
   window.onSnapshot(window.colJoiners, (snapshot) => {
     JOINERS = {};
     snapshot.forEach((doc) => {
@@ -153,7 +150,6 @@ function iniciarSincronizacaoRealtime() {
       </div>
     </div>
 
-    <!-- Bloco de Cadastros Rápidos -->
     <div class="grid md:grid-cols-2 gap-6 mb-8">
       
       <!-- Cadastrar Novo Photocard -->
@@ -289,7 +285,7 @@ function iniciarSincronizacaoRealtime() {
 
     <div class="mb-3">
       <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Cliente:</label>
-      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da cliente..." class="w-full px-4 py-2.5 rounded-2xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da cliente..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
     </div>
 
     <div id="listaClientesModal" class="max-h-56 overflow-y-auto space-y-1 pr-1 divide-y divide-violet-50"></div>
@@ -653,7 +649,7 @@ function renderTabelaAdmin() {
 }
 
 function gerarLinkZap(p) {
-  const txt = encodeURIComponent(`Olá! Tenho interesse nesse card:\n✨ *${p.nome}*\n💰 Preço: ${brl(p.preco)}\n📦 Lote: ${p.local}`);
+  const txt = encodeURIComponent(`Olá! Tenho interesse nesse card:\nItem: ${p.nome}\nPreco: ${brl(p.preco)}\nLote: ${p.local}`);
   return `${LOJA.whatsapp}?text=${txt}`;
 }
 

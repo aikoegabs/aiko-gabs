@@ -10,10 +10,10 @@
 <style>
   body { font-family: 'Quicksand', system-ui, sans-serif; }
   .fade { animation: fade .35s ease both; }
-  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-violet-50 via-white to-sky-50 text-slate-700">
+<body class="h-screen overflow-hidden bg-gradient-to-br from-violet-50 via-white to-sky-50 text-slate-700 flex flex-col justify-between">
 
 <!-- =====================================================
      🔥 CONFIGURAÇÃO DO FIREBASE
@@ -36,8 +36,14 @@
 
   window.db = db;
   window.colEstoque = collection(db, "estoque");
+  window.colHistoricoEstoque = collection(db, "historico_estoque");
+  window.colArquivadosEstoque = collection(db, "arquivados_estoque");
   window.colJoiners = collection(db, "joiners");
   window.colConfig = collection(db, "configuracoes");
+  window.colComprovantes = collection(db, "comprovantes");
+  window.colHistoricoComprovantes = collection(db, "historico_comprovantes");
+  window.colArquivadosComprovantes = collection(db, "arquivados_comprovantes");
+  window.colHistoricoAcoes = collection(db, "historico_acoes");
   window.setDoc = setDoc;
   window.doc = doc;
   window.deleteDoc = deleteDoc;
@@ -57,53 +63,71 @@ const LOJA = {
 };
 
 let ESTOQUE_GERAL = [];
+let HISTORICO_ESTOQUE = [];
+let ARQUIVADOS_ESTOQUE = [];
 let JOINERS = {};
+let COMPROVANTES = [];
+let HISTORICO_COMPROVANTES = [];
+let ARQUIVADOS_COMPROVANTES = [];
+let HISTORICO_ACOES = [];
+let ADMIN_LOGADO = ""; // 'Aiko' ou 'Gabs'
+
 let STATUS_PERSONALIZADOS = [
   { id: "confirmado", nome: "Confirmado", cor: "bg-emerald-100 text-emerald-800 border-emerald-300" },
   { id: "warehouse", nome: "Warehouse", cor: "bg-sky-100 text-sky-800 border-sky-300" },
   { id: "indo_warehouse", nome: "Indo para Warehouse", cor: "bg-amber-100 text-amber-800 border-amber-300" },
-  { id: "vindo_brasil", nome: "Vindo pro Brasil", cor: "bg-violet-100 text-violet-800 border-violet-300" }
+  { id: "vindo_brasil", nome: "Vindo pro Brasil", cor: "bg-violet-100 text-violet-800 border-violet-300" },
+  { id: "indo_casa", nome: "Indo para a casa", cor: "bg-teal-100 text-teal-800 border-teal-300" }
 ];
 
-let ARTISTAS_PERSONALIZADAS = [
-  "Milk Pansawa",
-  "Love Pattranite",
-  "View Benyapa",
-  "Tu Tontawan"
-];
-
-let ITENS_PERSONALIZADOS = [
-  "Special Photocard",
-  "Benefit Card",
-  "Standard Card",
-  "Polaroid"
-];
+let ARTISTAS_PERSONALIZADAS = ["Milk Pansawa", "Love Pattranite", "View Benyapa", "Tu Tontawan"];
+let ITENS_PERSONALIZADOS = ["Special Photocard", "Benefit Card", "Standard Card", "Polaroid"];
 
 function iniciarSincronizacaoRealtime() {
   if (!window.db) return;
 
   window.onSnapshot(window.colEstoque, (snapshot) => {
     ESTOQUE_GERAL = [];
-    snapshot.forEach((doc) => {
-      ESTOQUE_GERAL.push({ id: doc.id, ...doc.data() });
-    });
+    snapshot.forEach((doc) => { ESTOQUE_GERAL.push({ id: doc.id, ...doc.data() }); });
     renderVitrineDisponiveis();
-    
-    const adminSec = document.getElementById('admin');
-    if (adminSec && !adminSec.classList.contains('hidden')) {
-      renderTabelaAdmin();
-    }
+    if ($('admin') && !$('admin').classList.contains('hidden')) renderTabelaAdmin();
+    if ($('joiner') && !$('joiner').classList.contains('hidden')) renderizarConteudoCliente();
+  });
+
+  window.onSnapshot(window.colHistoricoEstoque, (snapshot) => {
+    HISTORICO_ESTOQUE = [];
+    snapshot.forEach((doc) => { HISTORICO_ESTOQUE.push({ id: doc.id, ...doc.data() }); });
+  });
+
+  window.onSnapshot(window.colArquivadosEstoque, (snapshot) => {
+    ARQUIVADOS_ESTOQUE = [];
+    snapshot.forEach((doc) => { ARQUIVADOS_ESTOQUE.push({ id: doc.id, ...doc.data() }); });
   });
 
   window.onSnapshot(window.colJoiners, (snapshot) => {
     JOINERS = {};
-    snapshot.forEach((doc) => {
-      JOINERS[doc.id] = doc.data();
-    });
-    const adminSec = document.getElementById('admin');
-    if (adminSec && !adminSec.classList.contains('hidden')) {
-      renderTabelaAdmin();
-    }
+    snapshot.forEach((doc) => { JOINERS[doc.id] = doc.data(); });
+    if ($('admin') && !$('admin').classList.contains('hidden')) renderTabelaAdmin();
+  });
+
+  window.onSnapshot(window.colComprovantes, (snapshot) => {
+    COMPROVANTES = [];
+    snapshot.forEach((doc) => { COMPROVANTES.push({ id: doc.id, ...doc.data() }); });
+  });
+
+  window.onSnapshot(window.colHistoricoComprovantes, (snapshot) => {
+    HISTORICO_COMPROVANTES = [];
+    snapshot.forEach((doc) => { HISTORICO_COMPROVANTES.push({ id: doc.id, ...doc.data() }); });
+  });
+
+  window.onSnapshot(window.colArquivadosComprovantes, (snapshot) => {
+    ARQUIVADOS_COMPROVANTES = [];
+    snapshot.forEach((doc) => { ARQUIVADOS_COMPROVANTES.push({ id: doc.id, ...doc.data() }); });
+  });
+
+  window.onSnapshot(window.colHistoricoAcoes, (snapshot) => {
+    HISTORICO_ACOES = [];
+    snapshot.forEach((doc) => { HISTORICO_ACOES.push({ id: doc.id, ...doc.data() }); });
   });
 
   window.onSnapshot(window.doc(window.db, "configuracoes", "status"), (docSnap) => {
@@ -130,81 +154,80 @@ function iniciarSincronizacaoRealtime() {
 </script>
 <!-- ===================================================== -->
 
-<main class="max-w-4xl mx-auto px-4 py-8">
+<main class="max-w-4xl mx-auto px-4 py-4 w-full h-full flex flex-col justify-between">
 
   <!-- HOME -->
-  <section id="home" class="fade text-center pt-6">
-    <div class="flex justify-center mb-4">
-      <div id="logoContainer" class="max-w-[220px] sm:max-w-[280px] w-full"></div>
+  <section id="home" class="fade text-center flex flex-col justify-center items-center h-full">
+    <div class="w-full">
+      <div class="flex justify-center mb-6">
+        <div id="logoContainer" class="max-w-[260px] sm:max-w-[320px] w-full"></div>
+      </div>
+
+      <div class="flex justify-center mb-5">
+        <button onclick="show('vitrine')" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full text-sm font-bold text-white bg-violet-600 shadow-md shadow-violet-200 hover:bg-violet-700 hover:scale-105 active:scale-95 transition w-52">
+          <i data-lucide="heart" class="w-4 h-4"></i> Disponíveis
+        </button>
+      </div>
+
+      <!-- Caixa de Login do Joiner -->
+      <div class="max-w-sm mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm shadow-violet-100 border border-violet-100 text-left">
+        <h2 class="font-bold text-violet-600 text-sm flex items-center gap-1.5"><i data-lucide="user-round" class="w-4 h-4"></i> Área do Joiner</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Entre com seu usuário e senha para ver seus pedidos.</p>
+        
+        <form onsubmit="login(event)" class="mt-3 flex flex-col gap-2">
+          <input id="user" placeholder="@seuusuario" autocomplete="off"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-violet-50/70 border border-violet-100 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+          <input id="pass" type="password" placeholder="Sua senha"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-violet-50/70 border border-violet-100 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+          <button class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-xs hover:bg-violet-600 transition">Entrar</button>
+        </form>
+        <p id="erro" class="hidden mt-1.5 text-xs text-rose-400 text-center">Usuário ou senha incorretos</p>
+      </div>
     </div>
 
-    <div class="flex justify-center mt-4">
-      <button onclick="show('vitrine')" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-base font-bold text-white bg-gradient-to-r from-violet-400 to-sky-400 shadow-lg shadow-violet-300/60 hover:scale-105 active:scale-95 transition w-60">
-        <i data-lucide="heart" class="w-5 h-5"></i> Disponíveis
-      </button>
-    </div>
-
-    <!-- Caixa de Login do Joiner -->
-    <div class="mt-8 max-w-md mx-auto bg-white/85 backdrop-blur rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100 text-left">
-      <h2 class="font-bold text-violet-600 flex items-center gap-2"><i data-lucide="user-round" class="w-5 h-5"></i> Área do Joiner</h2>
-      <p class="text-sm text-slate-500 mt-1">Entre com seu usuário e senha para ver seus pedidos.</p>
-      
-      <form onsubmit="login(event)" class="mt-4 flex flex-col gap-3">
-        <input id="user" placeholder="@seuusuario" autocomplete="off"
-          class="w-full px-4 py-3 rounded-2xl bg-violet-50 border border-violet-100 focus:outline-none focus:ring-2 focus:ring-sky-300">
-        <input id="pass" type="password" placeholder="Sua senha"
-          class="w-full px-4 py-3 rounded-2xl bg-violet-50 border border-violet-100 focus:outline-none focus:ring-2 focus:ring-sky-300">
-        <button class="w-full py-3 rounded-2xl bg-violet-500 text-white font-bold hover:bg-violet-600 transition">Entrar</button>
-      </form>
-      <p id="erro" class="hidden mt-2 text-sm text-rose-400 text-center">Usuário ou senha incorretos 💜</p>
-    </div>
-
-    <div class="flex justify-center mt-8">
-      <button onclick="tentarEntrarAdmin()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-violet-400 hover:text-violet-600 bg-white/50 border border-violet-100 shadow-sm hover:bg-violet-50 transition">
-        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Aiko & Gabs (Admin)
+    <div class="flex justify-center mt-6">
+      <button onclick="tentarEntrarAdmin()" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold text-violet-400 hover:text-violet-600 bg-white/60 border border-violet-100 shadow-sm hover:bg-violet-50 transition">
+        <i data-lucide="shield-check" class="w-3 h-3"></i> Aiko & Gabs (Admin)
       </button>
     </div>
   </section>
 
   <!-- VITRINE DE DISPONÍVEIS -->
-  <section id="vitrine" class="hidden fade">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+  <section id="vitrine" class="hidden fade h-full flex flex-col">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
       <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
       
-      <!-- Layout Grid / Lista na Vitrine -->
       <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
         <button onclick="mudarLayoutVitrine('grid')" id="btnVitrineGrid" class="p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="layout-grid" class="w-4 h-4"></i> Grade</button>
         <button onclick="mudarLayoutVitrine('list')" id="btnVitrineList" class="p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="list" class="w-4 h-4"></i> Lista</button>
       </div>
     </div>
 
-    <div class="mb-4">
-      <h2 class="text-3xl font-bold text-violet-600 mb-1">Disponíveis</h2>
-      <p class="text-slate-500">Itens disponíveis para compra.</p>
+    <div class="mb-3">
+      <h2 class="text-2xl font-bold text-violet-600 mb-0.5">Disponíveis</h2>
+      <p class="text-xs text-slate-500">Itens disponíveis para compra.</p>
     </div>
 
     <!-- Barra de Filtros e Ordenação Completa -->
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-      
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
         <div class="w-full sm:w-64">
-          <input id="inputBuscaVitrine" oninput="renderVitrineDisponiveis()" placeholder="🔍 Pesquisar photocard..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+          <input id="inputBuscaVitrine" oninput="renderVitrineDisponiveis()" placeholder="🔍 Pesquisar photocard..." class="w-full px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
         </div>
         
-        <!-- Botão de Filtro -->
         <div class="relative">
-          <button onclick="toggleDropdownFiltroExcel()" class="px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm font-bold text-violet-700 hover:bg-violet-50 shadow-sm flex items-center gap-2">
-            <i data-lucide="filter" class="w-4 h-4 text-violet-500"></i> Filtros <span id="contadorFiltrosExcel" class="bg-violet-100 text-violet-600 text-xs px-2 py-0.5 rounded-full">Ativos</span>
+          <button onclick="toggleDropdownFiltroExcel()" class="px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs font-bold text-violet-700 hover:bg-violet-50 shadow-sm flex items-center gap-2">
+            <i data-lucide="filter" class="w-3.5 h-3.5 text-violet-500"></i> Filtros <span id="contadorFiltrosExcel" class="bg-violet-100 text-violet-600 text-[10px] px-1.5 py-0.5 rounded-full">Ativos</span>
           </button>
 
-          <!-- Dropdown de Filtros Avançado -->
-          <div id="dropdownFiltroExcel" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-violet-100 p-4 z-30 fade max-h-[80vh] overflow-y-auto">
-            
-            <!-- Seção Artista -->
+          <div id="dropdownFiltroExcel" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-violet-100 p-4 z-30 fade max-h-[70vh] overflow-y-auto">
             <div class="mb-4 pb-3 border-b border-violet-100">
               <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                 <span>Atriz / Artista</span>
-                <button onclick="marcarTodosExcel('artista', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                <div class="space-x-2">
+                  <button onclick="marcarTodosExcel('artista', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                  <button onclick="marcarTodosExcel('artista', false)" class="text-[10px] text-rose-500 hover:underline">Nenhum</button>
+                </div>
               </div>
               <div class="relative mb-2">
                 <input oninput="filtrarSubgrupoExcel('artista', this.value)" placeholder="Pesquisar artista..." class="w-full px-3 py-1.5 rounded-xl bg-violet-50/50 border border-violet-200 text-xs focus:outline-none">
@@ -212,11 +235,13 @@ function iniciarSincronizacaoRealtime() {
               <div id="excelArtistasList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
             </div>
 
-            <!-- Seção Nome do Item -->
             <div class="mb-4 pb-3 border-b border-violet-100">
               <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                 <span>Nome do Item</span>
-                <button onclick="marcarTodosExcel('item', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                <div class="space-x-2">
+                  <button onclick="marcarTodosExcel('item', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                  <button onclick="marcarTodosExcel('item', false)" class="text-[10px] text-rose-500 hover:underline">Nenhum</button>
+                </div>
               </div>
               <div class="relative mb-2">
                 <input oninput="filtrarSubgrupoExcel('item', this.value)" placeholder="Pesquisar item..." class="w-full px-3 py-1.5 rounded-xl bg-violet-50/50 border border-violet-200 text-xs focus:outline-none">
@@ -224,11 +249,13 @@ function iniciarSincronizacaoRealtime() {
               <div id="excelItensList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
             </div>
 
-            <!-- Seção Caixa -->
             <div class="mb-4 pb-3 border-b border-violet-100">
               <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                 <span>Caixa</span>
-                <button onclick="marcarTodosExcel('caixa', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                <div class="space-x-2">
+                  <button onclick="marcarTodosExcel('caixa', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                  <button onclick="marcarTodosExcel('caixa', false)" class="text-[10px] text-rose-500 hover:underline">Nenhum</button>
+                </div>
               </div>
               <div class="relative mb-2">
                 <input oninput="filtrarSubgrupoExcel('caixa', this.value)" placeholder="Pesquisar caixa..." class="w-full px-3 py-1.5 rounded-xl bg-violet-50/50 border border-violet-200 text-xs focus:outline-none">
@@ -236,11 +263,13 @@ function iniciarSincronizacaoRealtime() {
               <div id="excelCaixasList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
             </div>
 
-            <!-- Seção Status -->
             <div class="mb-3">
               <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                 <span>Status</span>
-                <button onclick="marcarTodosExcel('status', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                <div class="space-x-2">
+                  <button onclick="marcarTodosExcel('status', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+                  <button onclick="marcarTodosExcel('status', false)" class="text-[10px] text-rose-500 hover:underline">Nenhum</button>
+                </div>
               </div>
               <div id="excelStatusList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
             </div>
@@ -253,9 +282,8 @@ function iniciarSincronizacaoRealtime() {
         </div>
       </div>
 
-      <!-- Seletor de Ordenação (Preço / A-Z) -->
       <div class="w-full sm:w-auto">
-        <select id="selectOrdenacaoVitrine" onchange="renderVitrineDisponiveis()" class="px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm font-bold text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+        <select id="selectOrdenacaoVitrine" onchange="renderVitrineDisponiveis()" class="px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs font-bold text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
           <option value="padrao">Ordenar por Padrão</option>
           <option value="preco_crescente">Preço Total: Menor ao Maior</option>
           <option value="preco_decrescente">Preço Total: Maior ao Menor</option>
@@ -263,175 +291,135 @@ function iniciarSincronizacaoRealtime() {
           <option value="za">Ordem Alfabética (Z - A)</option>
         </select>
       </div>
-
     </div>
 
-    <div id="gridDisponiveis"></div>
+    <div id="gridDisponiveis" class="overflow-y-auto flex-1 pr-1"></div>
   </section>
 
   <!-- PAINEL ADMIN -->
-  <section id="admin" class="hidden fade">
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+  <section id="admin" class="hidden fade h-full flex flex-col overflow-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
       <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Sair do Admin</button>
-      <button onclick="abrirModalClientes()" class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-violet-100 text-violet-700 text-xs font-bold hover:bg-violet-200 transition shadow-sm">
-        <i data-lucide="users" class="w-4 h-4"></i> Clientes Cadastradas
-      </button>
-    </div>
-
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-      <div>
-        <h2 class="text-3xl font-bold text-violet-600">Painel Privativo · Aiko & Gabs 💜</h2>
-        <p class="text-slate-500 text-sm">Cadastre photocards, clientes e gerencie o estoque.</p>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span id="badgeAdminLogada" class="px-2.5 py-1 rounded-xl bg-violet-100 text-violet-700 text-xs font-extrabold"></span>
+        <button onclick="abrirModalComprovantesAdmin()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-100 text-sky-700 text-xs font-bold hover:bg-sky-200 transition shadow-sm">
+          <i data-lucide="receipt" class="w-3.5 h-3.5"></i> Comprovantes
+        </button>
+        <button onclick="abrirModalCardsHistoricoAdmin()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-100 text-violet-700 text-xs font-bold hover:bg-violet-200 transition shadow-sm">
+          <i data-lucide="package-check" class="w-3.5 h-3.5"></i> Histórico Cards
+        </button>
+        <button onclick="abrirModalHistoricoAcoes()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold hover:bg-amber-200 transition shadow-sm">
+          <i data-lucide="activity" class="w-3.5 h-3.5"></i> Atividades
+        </button>
+        <button onclick="abrirModalClientes()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-100 text-sky-700 text-xs font-bold hover:bg-sky-200 transition shadow-sm">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> Clientes
+        </button>
       </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-6 mb-8">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
+      <div>
+        <h2 class="text-2xl font-bold text-violet-600">Painel Privativo · Aiko & Gabs</h2>
+        <p class="text-slate-500 text-xs">Cadastre photocards, clientes e gerencie o estoque.</p>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4 mb-4 shrink-0">
       
       <!-- Cadastrar Novo Photocard -->
-      <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
-        <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5"></i> Cadastrar Novo Photocard</h3>
-        <div class="space-y-3">
+      <div class="bg-white rounded-2xl p-4 shadow-sm shadow-violet-100 border border-violet-100">
+        <h3 class="font-bold text-sm text-violet-700 mb-2 flex items-center gap-1.5"><i data-lucide="sparkles" class="w-4 h-4"></i> Cadastrar Novo Photocard</h3>
+        <div class="space-y-2">
           
-          <!-- Atriz / Artista Pesquisável -->
           <div class="relative">
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-bold text-slate-500">Atriz / Artista</label>
-              <button onclick="abrirModalArtistasConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Artistas
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[11px] font-bold text-slate-500">Atriz / Artista</label>
+              <button onclick="abrirModalArtistasConfig()" class="text-[10px] font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3 h-3"></i> Personalizar Artistas
               </button>
             </div>
-            <input id="inputBuscaArtistaAdmin" placeholder="🔍 Pesquisar ou selecionar artista..." autocomplete="off" onfocus="abrirDropdownAdmin('Artista')" oninput="filtrarDropdownAdmin('Artista', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input id="inputBuscaArtistaAdmin" placeholder="🔍 Pesquisar ou selecionar artista..." autocomplete="off" onfocus="abrirDropdownAdmin('Artista')" oninput="filtrarDropdownAdmin('Artista', this.value)" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcAtrizSelecionada">
-            <div id="dropdownArtistaAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
+            <div id="dropdownArtistaAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-32 overflow-y-auto z-40 p-1"></div>
           </div>
 
-          <!-- Nome do Item Pesquisável -->
           <div class="relative">
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-bold text-slate-500">Nome do Item</label>
-              <button onclick="abrirModalItensConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Itens
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[11px] font-bold text-slate-500">Nome do Item</label>
+              <button onclick="abrirModalItensConfig()" class="text-[10px] font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3 h-3"></i> Personalizar Itens
               </button>
             </div>
-            <input id="inputBuscaItemAdmin" placeholder="🔍 Pesquisar ou selecionar item..." autocomplete="off" onfocus="abrirDropdownAdmin('Item')" oninput="filtrarDropdownAdmin('Item', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input id="inputBuscaItemAdmin" placeholder="🔍 Pesquisar ou selecionar item..." autocomplete="off" onfocus="abrirDropdownAdmin('Item')" oninput="filtrarDropdownAdmin('Item', this.value)" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcItemSelecionado">
-            <div id="dropdownItemAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
+            <div id="dropdownItemAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-32 overflow-y-auto z-40 p-1"></div>
           </div>
 
-          <!-- Preço e Caixa Alinhados Perfeitamente -->
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="text-xs font-bold text-slate-500">Preço (R$)</label>
-                <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
-                  <input type="checkbox" id="pcPagoCardCheck" class="rounded accent-violet-600 w-3.5 h-3.5"> Pago
+              <div class="flex items-center justify-between mb-0.5">
+                <label class="text-[11px] font-bold text-slate-500">Preço (R$)</label>
+                <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                  <input type="checkbox" id="pcPagoCardCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
                 </label>
               </div>
-              <input id="pcPreco" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+              <input id="pcPreco" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
             </div>
             <div>
-              <label class="text-xs font-bold text-slate-500 block mb-1">Caixa</label>
-              <input id="pcLocal" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Caixa</label>
+              <input id="pcLocal" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
             </div>
           </div>
 
-          <!-- Status Inicial Pesquisável -->
           <div class="relative">
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-bold text-slate-500">Status Inicial</label>
-              <button onclick="abrirModalStatusConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Status
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[11px] font-bold text-slate-500">Status Inicial</label>
+              <button onclick="abrirModalStatusConfig()" class="text-[10px] font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3 h-3"></i> Personalizar Status
               </button>
             </div>
-            <input id="inputBuscaStatusAdmin" placeholder="🔍 Pesquisar ou selecionar status..." autocomplete="off" onfocus="abrirDropdownAdmin('Status')" oninput="filtrarDropdownAdmin('Status', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input id="inputBuscaStatusAdmin" placeholder="🔍 Pesquisar ou selecionar status..." autocomplete="off" onfocus="abrirDropdownAdmin('Status')" oninput="filtrarDropdownAdmin('Status', this.value)" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcStatusSelecionado">
-            <div id="dropdownStatusAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
+            <div id="dropdownStatusAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-32 overflow-y-auto z-40 p-1"></div>
           </div>
 
-          <!-- TAXAS E DATAS LIMITES INICIAIS -->
-          <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-2.5">
-            <span class="text-[11px] font-bold text-violet-700 block">Fretes & Taxas Iniciais (opcional)</span>
-            
-            <!-- Linha 1: Frete Inter -->
-            <div class="grid grid-cols-2 gap-2 items-end">
-              <div>
-                <div class="flex items-center justify-between mb-0.5">
-                  <label class="text-[10px] font-bold text-slate-600">Frete Inter (R$)</label>
-                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
-                    <input type="checkbox" id="pcPagoFreteInterCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
-                  </label>
-                </div>
-                <input id="pcFreteInter" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
-              </div>
-              <div>
-                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Frete Inter</label>
-                <input id="pcDataFreteInter" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
-              </div>
+          <div class="flex items-center gap-2 pt-1">
+            <div class="flex-1">
+              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Foto do Card</label>
+              <input id="pcFotoInput" type="file" accept="image/*" class="w-full px-2 py-1 rounded-xl bg-violet-50 border border-violet-200 text-[11px]">
             </div>
-
-            <!-- Linha 2: Taxa RF -->
-            <div class="grid grid-cols-2 gap-2 items-end">
-              <div>
-                <div class="flex items-center justify-between mb-0.5">
-                  <label class="text-[10px] font-bold text-slate-600">Taxa RF (R$)</label>
-                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
-                    <input type="checkbox" id="pcPagoTaxaRfCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
-                  </label>
-                </div>
-                <input id="pcTaxaRf" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
-              </div>
-              <div>
-                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Taxa RF</label>
-                <input id="pcDataTaxaRf" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
-              </div>
-            </div>
-
-            <!-- Linha 3: Frete Nacional -->
-            <div class="grid grid-cols-2 gap-2 items-end">
-              <div>
-                <div class="flex items-center justify-between mb-0.5">
-                  <label class="text-[10px] font-bold text-slate-600">Frete Nacional (R$)</label>
-                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
-                    <input type="checkbox" id="pcPagoFreteNacCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
-                  </label>
-                </div>
-                <input id="pcFreteNac" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
-              </div>
-              <div>
-                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Frete Nac</label>
-                <input id="pcDataFreteNac" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
-              </div>
-            </div>
+            <button onclick="adicionarNovoPCAdmin()" class="px-4 py-2 mt-4 rounded-xl bg-violet-500 text-white font-bold text-xs shadow hover:bg-violet-600 transition shrink-0">
+              Salvar Card
+            </button>
           </div>
-
-          <div>
-            <label class="text-xs font-bold text-slate-500">Foto do Photocard</label>
-            <input id="pcFotoInput" type="file" accept="image/*" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
-          </div>
-          <button onclick="adicionarNovoPCAdmin()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition mt-2">
-            Salvar Photocard no Estoque
-          </button>
         </div>
       </div>
 
       <!-- Cadastrar Nova Cliente -->
-      <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
-        <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5"></i> Cadastrar Nova Cliente</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="text-xs font-bold text-slate-500">Usuário</label>
-            <input id="novoUser" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
-            <p class="text-[11px] text-slate-400 mt-1">Pode colocar com ou sem @ (ex: @camily ou camily)</p>
+      <div class="bg-white rounded-2xl p-4 shadow-sm shadow-violet-100 border border-violet-100">
+        <h3 class="font-bold text-sm text-violet-700 mb-2 flex items-center gap-1.5"><i data-lucide="user-plus" class="w-4 h-4"></i> Cadastrar Nova Cliente</h3>
+        <div class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Usuário</label>
+              <input id="novoUser" placeholder="@camily" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Nome Completo</label>
+              <input id="novoNome" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+            </div>
           </div>
-          <div>
-            <label class="text-xs font-bold text-slate-500">Nome Completo</label>
-            <input id="novoNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">WhatsApp</label>
+              <input id="novoWpp" placeholder="11984196885" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Senha</label>
+              <input id="novaSenha" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+            </div>
           </div>
-          <div>
-            <label class="text-xs font-bold text-slate-500">Senha de Acesso</label>
-            <input id="novaSenha" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
-          </div>
-          <button onclick="cadastrarJoinerAdmin()" class="w-full py-3 rounded-xl bg-sky-500 text-white font-bold text-sm shadow hover:bg-sky-600 transition mt-2">
+          <button onclick="cadastrarJoinerAdmin()" class="w-full py-2.5 mt-2 rounded-xl bg-sky-500 text-white font-bold text-xs shadow hover:bg-sky-600 transition">
             Cadastrar Cliente
           </button>
         </div>
@@ -440,22 +428,22 @@ function iniciarSincronizacaoRealtime() {
     </div>
 
     <!-- Tabela de Gerenciamento de Estoque por Caixas com Filtro -->
-    <div class="space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <h3 class="font-bold text-xl text-violet-700 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5"></i> Gerenciamento de Estoque por Caixas</h3>
-        <div class="w-full sm:w-72">
-          <input id="inputBuscaAdmin" oninput="renderTabelaAdmin()" placeholder="🔍 Filtrar por atriz, item ou caixa..." class="w-full px-4 py-2 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+    <div class="space-y-2 flex-1 overflow-hidden flex flex-col">
+      <div class="flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <h3 class="font-bold text-sm text-violet-700 flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4"></i> Gerenciamento de Estoque</h3>
+        <div class="w-full sm:w-64">
+          <input id="inputBuscaAdmin" oninput="renderTabelaAdmin()" placeholder="🔍 Filtrar por atriz, item ou caixa..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
         </div>
       </div>
-      <div id="containerTabelaAdmin"></div>
+      <div id="containerTabelaAdmin" class="overflow-y-auto flex-1 pr-1"></div>
     </div>
   </section>
 
   <!-- ÁREA DO JOINER -->
-  <section id="joiner" class="hidden fade">
-    <button onclick="show('home')" class="back"><i data-lucide="log-out" class="w-4 h-4"></i> Sair</button>
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <h2 class="text-3xl font-bold text-violet-600">Olá, <span id="nomeJoiner"></span>! 💜</h2>
+  <section id="joiner" class="hidden fade h-full flex flex-col">
+    <button onclick="show('home')" class="back mb-2"><i data-lucide="log-out" class="w-4 h-4"></i> Sair</button>
+    <div class="flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <h2 class="text-2xl font-bold text-violet-600">Olá, <span id="nomeJoiner"></span>!</h2>
       
       <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
         <button onclick="mudarLayout('grid')" id="btnLayoutGrid" class="p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="layout-grid" class="w-4 h-4"></i> Grade</button>
@@ -463,35 +451,48 @@ function iniciarSincronizacaoRealtime() {
       </div>
     </div>
 
-    <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex gap-2 bg-white/70 p-1.5 rounded-full border border-violet-100 w-full sm:w-fit">
-        <button id="tab1" onclick="tab(1)" class="tabbtn flex-1 sm:flex-none">Disponíveis da Loja</button>
-        <button id="tab2" onclick="tab(2)" class="tabbtn flex-1 sm:flex-none">Meus Itens Comprados</button>
-      </div>
-      
+    <div class="mt-4 flex flex-wrap items-center justify-end gap-4 shrink-0">
       <div class="w-full sm:w-72">
-        <input id="inputBusca" oninput="atualizarFiltroJoiner()" placeholder="🔍 Pesquisar photocard ou caixa..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+        <input id="inputBusca" oninput="atualizarFiltroJoiner()" placeholder="🔍 Pesquisar meus photocards ou caixa..." class="w-full px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
       </div>
     </div>
 
-    <div id="containerAreaCliente" class="mt-6"></div>
+    <div id="containerAreaCliente" class="mt-4 overflow-y-auto flex-1 pr-1"></div>
   </section>
 
-  <footer class="mt-16 text-center text-xs text-slate-400">
+  <footer class="mt-2 text-center text-[11px] text-slate-400 shrink-0">
     © <span id="ano"></span> Aiko & Gabs · feito com 💜💙
   </footer>
 </main>
 
-<!-- MODAL DE CONFIGURAÇÃO DE STATUS -->
+<!-- MODAL DE MOTIVO DA REJEIÇÃO -->
+<div id="modalRejeicao" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-60">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-rose-600 flex items-center gap-2"><i data-lucide="x-circle" class="w-5 h-5"></i> Motivo da Rejeição</h3>
+      <button onclick="fecharModalRejeicao()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <input type="hidden" id="rejeicaoCompId">
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-bold text-slate-500">Por que o comprovante foi rejeitado?</label>
+        <textarea id="inputMotivoRejeicao" rows="3" placeholder="Ex: Valor enviado divergente dos itens selecionados, por favor envie novamente..." class="w-full px-3 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-rose-300"></textarea>
+      </div>
+      <button onclick="confirmarRejeicaoComprovante()" class="w-full py-3 rounded-xl bg-rose-500 text-white font-bold text-sm shadow hover:bg-rose-600 transition">
+        Confirmar Rejeição & Gerar WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAIS -->
 <div id="modalStatusConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="tags" class="w-5 h-5"></i> Personalizar Status</h3>
       <button onclick="fecharModalStatusConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
-    
     <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaStatusConfigs"></div>
-
     <div class="space-y-2 pt-2 border-t border-violet-100">
       <input id="novoStatusNome" placeholder="Nome do Status" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
       <select id="novoStatusCor" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
@@ -499,6 +500,7 @@ function iniciarSincronizacaoRealtime() {
         <option value="bg-sky-100 text-sky-800 border-sky-300">Azul</option>
         <option value="bg-amber-100 text-amber-800 border-amber-300">Amarelo</option>
         <option value="bg-violet-100 text-violet-800 border-violet-300">Roxo</option>
+        <option value="bg-teal-100 text-teal-800 border-teal-300">Verde Água</option>
         <option value="bg-rose-100 text-rose-800 border-rose-300">Rosa/Vermelho</option>
       </select>
       <button onclick="adicionarStatusPersonalizado()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Status</button>
@@ -506,16 +508,13 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE CONFIGURAÇÃO DE ARTISTAS -->
 <div id="modalArtistasConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5"></i> Personalizar Atrizes / Artistas</h3>
       <button onclick="fecharModalArtistasConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
-    
     <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaArtistasConfigs"></div>
-
     <div class="space-y-2 pt-2 border-t border-violet-100">
       <input id="novaArtistasNome" placeholder="Nome da Atriz / Artista" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
       <button onclick="adicionarArtistaPersonalizada()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Artista</button>
@@ -523,16 +522,13 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE CONFIGURAÇÃO DE ITENS -->
 <div id="modalItensConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5"></i> Personalizar Nomes de Itens</h3>
       <button onclick="fecharModalItensConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
-    
     <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaItensConfigs"></div>
-
     <div class="space-y-2 pt-2 border-t border-violet-100">
       <input id="novoItemNomeInput" placeholder="Nome do Item" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
       <button onclick="adicionarItemPersonalizado()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Item</button>
@@ -540,22 +536,18 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE EDIÇÃO COMPLETA DO CARD -->
 <div id="modalEditarCard" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5"></i> Editar Photocard & Taxas</h3>
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5"></i> Editar Photocard & Pagamentos</h3>
       <button onclick="fecharModalEditar()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
-
     <input type="hidden" id="editCardId">
-
     <div class="space-y-3">
       <div>
         <label class="text-xs font-bold text-slate-500">Nome do Photocard</label>
         <input id="editNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
       </div>
-
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="text-xs font-bold text-slate-500">Preço do Card (R$)</label>
@@ -567,41 +559,70 @@ function iniciarSincronizacaoRealtime() {
         </div>
       </div>
 
-      <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-2">
-        <div class="grid grid-cols-2 gap-2">
+      <!-- STATUS DE PAGAMENTO EDITÁVEIS -->
+      <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-3">
+        <span class="text-xs font-bold text-violet-700 block">Status de Pagamento dos Itens</span>
+        
+        <div class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-violet-100">
+          <span class="text-xs font-bold text-slate-700">Card Principal</span>
+          <label class="flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+            <input type="checkbox" id="editPagoCardCheck" class="rounded accent-violet-600 w-4 h-4"> Pago
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 items-end">
           <div>
-            <label class="text-[11px] font-bold text-slate-600">Frete Inter (R$)</label>
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[11px] font-bold text-slate-600">Frete Inter (R$)</label>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
+                <input type="checkbox" id="editPagoFreteInterCheck" class="rounded accent-violet-600 w-3.5 h-3.5"> Pago
+              </label>
+            </div>
             <input id="editFreteInter" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
           </div>
           <div>
-            <label class="text-[11px] font-bold text-slate-600">Prazo Frete Inter</label>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Prazo Frete Inter</label>
             <input id="editDataFreteInter" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2 items-end">
           <div>
-            <label class="text-[11px] font-bold text-slate-600">Taxa RF (R$)</label>
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[11px] font-bold text-slate-600">Taxa RF (R$)</label>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
+                <input type="checkbox" id="editPagoTaxaRfCheck" class="rounded accent-violet-600 w-3.5 h-3.5"> Pago
+              </label>
+            </div>
             <input id="editTaxaRf" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
           </div>
           <div>
-            <label class="text-[11px] font-bold text-slate-600">Prazo Taxa RF</label>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Prazo Taxa RF</label>
             <input id="editDataTaxaRf" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2 items-end">
           <div>
-            <label class="text-[11px] font-bold text-slate-600">Frete Nacional (R$)</label>
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[11px] font-bold text-slate-600">Frete Nacional (R$)</label>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
+                <input type="checkbox" id="editPagoFreteNacCheck" class="rounded accent-violet-600 w-3.5 h-3.5"> Pago
+              </label>
+            </div>
             <input id="editFreteNac" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
           </div>
           <div>
-            <label class="text-[11px] font-bold text-slate-600">Prazo Frete Nac</label>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Prazo Frete Nac</label>
             <input id="editDataFreteNac" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
           </div>
         </div>
       </div>
 
+      <div>
+        <label class="text-xs font-bold text-slate-500">Código de Rastreio (se enviado para a casa)</label>
+        <input id="editRastreio" placeholder="Ex: AB123456789BR" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+      </div>
       <button onclick="salvarEdicaoCard()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition mt-2">
         Salvar Alterações
       </button>
@@ -609,7 +630,6 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE LISTA DE CLIENTES -->
 <div id="modalListaClientes" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
@@ -620,16 +640,13 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE EDITAR CLIENTE -->
 <div id="modalEditarCliente" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-60">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="user-pen" class="w-5 h-5"></i> Editar Cliente</h3>
       <button onclick="fecharModalEditarCliente()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
-
     <input type="hidden" id="editClientKeyOriginal">
-
     <div class="space-y-3">
       <div>
         <label class="text-xs font-bold text-slate-500">Usuário (@)</label>
@@ -638,6 +655,10 @@ function iniciarSincronizacaoRealtime() {
       <div>
         <label class="text-xs font-bold text-slate-500">Nome Completo</label>
         <input id="editClientName" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-500">WhatsApp</label>
+        <input id="editClientWpp" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
       </div>
       <div>
         <label class="text-xs font-bold text-slate-500">Senha</label>
@@ -650,14 +671,113 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE STATUS (JOINER / DISPONÍVEL) -->
+<!-- MODAL DE COMPROVANTES PENDENTES (ADMIN) -->
+<div id="modalComprovantesAdmin" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="receipt" class="w-5 h-5"></i> Comprovantes Pendentes</h3>
+      <button onclick="fecharModalComprovantesAdmin()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div class="flex gap-2 mb-4 border-b border-violet-100 pb-2">
+      <button onclick="abrirModalComprovantesAdmin()" class="px-3 py-1.5 rounded-xl bg-sky-100 text-sky-700 text-xs font-bold">Pendentes</button>
+      <button onclick="abrirModalHistoricoAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-violet-100">Histórico / Aprovados</button>
+      <button onclick="abrirModalArquivadosAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-amber-100">Arquivados</button>
+    </div>
+    <div id="containerListaComprovantes" class="space-y-4"></div>
+  </div>
+</div>
+
+<!-- MODAL DE HISTÓRICO DE COMPROVANTES (ADMIN) -->
+<div id="modalHistoricoAdmin" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="history" class="w-5 h-5"></i> Histórico de Comprovantes</h3>
+      <button onclick="fecharModalHistoricoAdmin()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div class="flex gap-2 mb-4 border-b border-violet-100 pb-2">
+      <button onclick="abrirModalComprovantesAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-sky-100">Pendentes</button>
+      <button onclick="abrirModalHistoricoAdmin()" class="px-3 py-1.5 rounded-xl bg-violet-100 text-violet-700 text-xs font-bold">Histórico / Aprovados</button>
+      <button onclick="abrirModalArquivadosAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-amber-100">Arquivados</button>
+    </div>
+    <div id="containerHistoricoComprovantes" class="space-y-4"></div>
+  </div>
+</div>
+
+<!-- MODAL DE ARQUIVADOS DE COMPROVANTES (ADMIN) -->
+<div id="modalArquivadosAdmin" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="archive" class="w-5 h-5"></i> Comprovantes Arquivados</h3>
+      <button onclick="fecharModalArquivadosAdmin()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div class="flex gap-2 mb-4 border-b border-violet-100 pb-2">
+      <button onclick="abrirModalComprovantesAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-sky-100">Pendentes</button>
+      <button onclick="abrirModalHistoricoAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-violet-100">Histórico / Aprovados</button>
+      <button onclick="abrirModalArquivadosAdmin()" class="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-700 text-xs font-bold">Arquivados</button>
+    </div>
+    <div id="containerArquivadosComprovantes" class="space-y-4"></div>
+  </div>
+</div>
+
+<!-- MODAL DE HISTÓRICO DE CARDS (ADMIN) -->
+<div id="modalCardsHistoricoAdmin" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="package-check" class="w-5 h-5"></i> Histórico & Arquivo de Photocards</h3>
+      <button onclick="fecharModalCardsHistoricoAdmin()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div class="flex gap-2 mb-4 border-b border-violet-100 pb-2">
+      <button onclick="mudarAbaCardsModal('historico')" id="btnTabCardHist" class="px-3 py-1.5 rounded-xl bg-violet-100 text-violet-700 text-xs font-bold">Histórico (Chegados)</button>
+      <button onclick="mudarAbaCardsModal('arquivados')" id="btnTabCardArq" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-amber-100">Arquivados (Entregues)</button>
+    </div>
+    <div id="containerCardsHistorico" class="space-y-4"></div>
+  </div>
+</div>
+
+<!-- MODAL DE HISTÓRICO DE AÇÕES DO ADMIN -->
+<div id="modalHistoricoAcoes" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5"></i> Atividades Recentes do Admin (Aiko & Gabs)</h3>
+      <button onclick="fecharModalHistoricoAcoes()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div id="containerHistoricoAcoes" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- MODAL DE ENVIAR COMPROVANTE (CLIENTE) -->
+<div id="modalEnviarComprovante" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-60">
+  <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="upload" class="w-5 h-5"></i> Enviar Comprovante de Pagamento</h3>
+      <button onclick="fecharModalEnviarComprovante()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <p class="text-xs text-slate-500 mb-3">Selecione abaixo os itens (cards e/ou fretes pendentes) que você está pagando:</p>
+    <div id="listaItensPendentesComprovante" class="max-h-48 overflow-y-auto space-y-2 p-2 bg-violet-50/50 rounded-2xl border border-violet-100 mb-4"></div>
+    <div class="p-3 bg-violet-100/70 rounded-2xl flex items-center justify-between mb-4">
+      <span class="text-xs font-bold text-violet-800">Total Selecionado:</span>
+      <span id="spanTotalComprovante" class="text-base font-extrabold text-violet-700">R$ 0,00</span>
+    </div>
+    <div class="mb-4">
+      <label class="text-xs font-bold text-slate-500 block mb-1">Observação / Descrição (opcional):</label>
+      <input id="inputObsComprovante" placeholder="Ex: Mandei R$ 10 a mais referente à sobra..." class="w-full px-3 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+    </div>
+    <div class="mb-4">
+      <label class="text-xs font-bold text-slate-500 block mb-1">Foto ou Print do Comprovante (Pix):</label>
+      <input id="inputFotoComprovante" type="file" accept="image/*" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+    </div>
+    <button onclick="enviarComprovanteCliente()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition">
+      Enviar Comprovante para a Loja
+    </button>
+  </div>
+</div>
+
 <div id="modalStatus" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="user-check" class="w-5 h-5"></i> Joiner / Disponível</h3>
       <button onclick="fecharModalStatus()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
-
     <div class="grid grid-cols-2 gap-2 mb-4">
       <button onclick="alterarStatusModal('standby')" class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
         <i data-lucide="clock" class="w-4 h-4"></i> Standby (Oculto)
@@ -666,17 +786,14 @@ function iniciarSincronizacaoRealtime() {
         <i data-lucide="sparkles" class="w-4 h-4"></i> Disponível (Vitrine)
       </button>
     </div>
-
     <div class="mb-3">
       <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Joiner:</label>
       <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da joiner..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
     </div>
-
     <div id="listaClientesModal" class="max-h-56 overflow-y-auto space-y-1 pr-1 divide-y divide-violet-50"></div>
   </div>
 </div>
 
-<!-- MODAL DE ZOOM -->
 <div id="modalZoom" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50" onclick="fecharZoom()">
   <div class="relative max-w-xl w-full max-h-[90vh] flex items-center justify-center" onclick="event.stopPropagation()">
     <button onclick="fecharZoom()" class="absolute -top-12 right-0 text-white font-bold text-2xl hover:text-violet-300 transition">✕ Fechar</button>
@@ -687,9 +804,6 @@ function iniciarSincronizacaoRealtime() {
 <style>
   .back { display:inline-flex; align-items:center; gap:.4rem; font-size:.875rem; font-weight:700; color:#8b5cf6; }
   .back:hover { color:#0ea5e9; }
-  .tabbtn { padding:.6rem 1.2rem; border-radius:9999px; font-weight:700; font-size:.9rem; color:#8b5cf6; transition:.2s; }
-  .tabbtn.on { background:linear-gradient(90deg,#a78bfa,#7dd3fc); color:#fff; box-shadow:0 4px 12px #c4b5fd80; }
-  
   .upload-btn { position:absolute; bottom:2px; left:2px; background:rgba(255,255,255,0.95); backdrop-filter:blur(4px); width:20px; height:20px; border-radius:6px; font-size:10px; font-weight:bold; color:#8b5cf6; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.15); border:1px solid #ddd6fe; }
   .upload-btn:hover { background:#8b5cf6; color:#fff; }
   .zoomable { cursor: pointer; transition: transform 0.2s; }
@@ -705,22 +819,42 @@ let clienteAtualKey = "";
 let layoutAtual = "grid"; 
 let layoutVitrineAtual = "grid";
 let filtrosExcelState = { artista: {}, item: {}, caixa: {}, status: {} };
-let abaAtualJoiner = 1;
 let caixasExpandidas = {}; 
 let caixasAdminExpandidas = {}; 
 let cardEditandoId = null;
+let abaCardModalAtual = "historico";
 
 function tentarEntrarAdmin() {
-  const senhaMestra = prompt("Digite a senha de Admin da Aiko & Gabs:");
-  if (senhaMestra === "aikogabs2026") {
-    show('admin');
-    renderTabelaAdmin();
-    renderizarGerenciadorStatus();
-    renderizarGerenciadorArtistas();
-    renderizarGerenciadorItens();
+  const senhaMestra = prompt("Digite a sua senha de Admin:");
+  if (senhaMestra === "Hannah255") {
+    ADMIN_LOGADO = "Aiko";
+  } else if (senhaMestra === "Gabs4321") {
+    ADMIN_LOGADO = "Gabs";
   } else if (senhaMestra !== null) {
-    alert("Senha incorreta! 💜");
+    alert("Senha incorreta!");
+    return;
+  } else {
+    return;
   }
+
+  $("badgeAdminLogada").textContent = `👩‍💻 ${ADMIN_LOGADO}`;
+  show('admin');
+  renderTabelaAdmin();
+  renderizarGerenciadorStatus();
+  renderizarGerenciadorArtistas();
+  renderizarGerenciadorItens();
+}
+
+async function registrarAcaoAdmin(descricao) {
+  if (!window.db) return;
+  const acaoId = "acao_" + Date.now();
+  const novaAcao = {
+    id: acaoId,
+    admin: ADMIN_LOGADO || "Admin",
+    descricao,
+    timestamp: Date.now()
+  };
+  await window.setDoc(window.doc(window.db, "historico_acoes", acaoId), novaAcao);
 }
 
 function abrirZoom(src) {
@@ -728,28 +862,18 @@ function abrirZoom(src) {
   $("imgZoom").src = src;
   $("modalZoom").classList.remove("hidden");
 }
-
 function fecharZoom() {
   $("modalZoom").classList.add("hidden");
   $("imgZoom").src = "";
 }
 
-function abrirModalStatusConfig() {
-  renderizarGerenciadorStatus();
-  $("modalStatusConfig").classList.remove("hidden");
-}
+function abrirModalStatusConfig() { renderizarGerenciadorStatus(); $("modalStatusConfig").classList.remove("hidden"); }
 function fecharModalStatusConfig() { $("modalStatusConfig").classList.add("hidden"); }
 
-function abrirModalArtistasConfig() {
-  renderizarGerenciadorArtistas();
-  $("modalArtistasConfig").classList.remove("hidden");
-}
+function abrirModalArtistasConfig() { renderizarGerenciadorArtistas(); $("modalArtistasConfig").classList.remove("hidden"); }
 function fecharModalArtistasConfig() { $("modalArtistasConfig").classList.add("hidden"); }
 
-function abrirModalItensConfig() {
-  renderizarGerenciadorItens();
-  $("modalItensConfig").classList.remove("hidden");
-}
+function abrirModalItensConfig() { renderizarGerenciadorItens(); $("modalItensConfig").classList.remove("hidden"); }
 function fecharModalItensConfig() { $("modalItensConfig").classList.add("hidden"); }
 
 function renderizarGerenciadorStatus() {
@@ -785,9 +909,7 @@ function abrirDropdownAdmin(tipo) {
 function filtrarDropdownAdmin(tipo, termo) {
   const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : 'dropdownStatusAdmin';
   let lista = tipo === 'Artista' ? ARTISTAS_PERSONALIZADAS : tipo === 'Item' ? ITENS_PERSONALIZADOS : STATUS_PERSONALIZADOS.map(s => s.nome);
-
   if (termo) lista = lista.filter(x => x.toLowerCase().includes(termo.toLowerCase()));
-
   let html = "";
   if (!lista.length) {
     html = `<div class="p-2 text-xs text-slate-400 text-center">Nenhum resultado encontrado</div>`;
@@ -898,6 +1020,7 @@ async function mudarFotoEstoque(event, id) {
     if (pc && window.db) {
       pc.foto = e.target.result;
       await window.setDoc(window.doc(window.db, "estoque", id), pc);
+      await registrarAcaoAdmin(`Atualizou a foto do card "${pc.nome}"`);
     }
   };
   reader.readAsDataURL(file);
@@ -914,39 +1037,30 @@ function adicionarNovoPCAdmin() {
   const local = $("pcLocal").value.trim() || "Geral";
   const statusEnvioId = $("pcStatusSelecionado").value;
 
-  const freteInter = parseFloat($("pcFreteInter").value) || 0;
-  const pagoFreteInter = $("pcPagoFreteInterCheck").checked;
-  const dataFreteInter = $("pcDataFreteInter").value.trim();
-
-  const taxaRf = parseFloat($("pcTaxaRf").value) || 0;
-  const pagoTaxaRf = $("pcPagoTaxaRfCheck").checked;
-  const dataTaxaRf = $("pcDataTaxaRf").value.trim();
-
-  const freteNac = parseFloat($("pcFreteNac").value) || 0;
-  const pagoFreteNac = $("pcPagoFreteNacCheck").checked;
-  const dataFreteNac = $("pcDataFreteNac").value.trim();
-
   const fileInput = $("pcFotoInput");
 
   if (fileInput.files && fileInput.files[0]) {
     const reader = new FileReader();
     reader.onload = function(e) {
-      salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, e.target.result);
+      salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, e.target.result);
     };
     reader.readAsDataURL(fileInput.files[0]);
   } else {
-    salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, "");
+    salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, "");
   }
 }
 
-async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, fotoBase64) {
+async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvioId, fotoBase64) {
   const id = "pc_" + Date.now();
   const novoCard = {
     id, nome, foto: fotoBase64, preco, status: "standby", local,
-    freteInter, dataFreteInter, taxaRf, dataTaxaRf, freteNac, dataFreteNac,
-    pagoCard, pagoFreteInter, pagoTaxaRf, pagoFreteNac, statusEnvioId
+    freteInter: 0, dataFreteInter: "", taxaRf: 0, dataTaxaRf: "", freteNac: 0, dataFreteNac: "",
+    pagoCard, pagoFreteInter: false, pagoTaxaRf: false, pagoFreteNac: false, statusEnvioId, rastreio: ""
   };
-  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), novoCard);
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "estoque", id), novoCard);
+    await registrarAcaoAdmin(`Cadastrou o photocard "${nome}" na caixa ${local}`);
+  }
 
   $("inputBuscaArtistaAdmin").value = "";
   $("pcAtrizSelecionada").value = "";
@@ -957,15 +1071,6 @@ async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvio
   $("pcLocal").value = "";
   $("inputBuscaStatusAdmin").value = "";
   $("pcStatusSelecionado").value = "";
-  $("pcFreteInter").value = "";
-  $("pcPagoFreteInterCheck").checked = false;
-  $("pcDataFreteInter").value = "";
-  $("pcTaxaRf").value = "";
-  $("pcPagoTaxaRfCheck").checked = false;
-  $("pcDataTaxaRf").value = "";
-  $("pcFreteNac").value = "";
-  $("pcPagoFreteNacCheck").checked = false;
-  $("pcDataFreteNac").value = "";
   $("pcFotoInput").value = "";
   alert("Photocard cadastrado em Standby com sucesso!");
 }
@@ -977,12 +1082,19 @@ function abrirModalEditar(id) {
   $("editNome").value = pc.nome || "";
   $("editPreco").value = pc.preco || 0;
   $("editLocal").value = pc.local || "";
+  
+  $("editPagoCardCheck").checked = !!pc.pagoCard;
+  $("editPagoFreteInterCheck").checked = !!pc.pagoFreteInter;
+  $("editPagoTaxaRfCheck").checked = !!pc.pagoTaxaRf;
+  $("editPagoFreteNacCheck").checked = !!pc.pagoFreteNac;
+
   $("editFreteInter").value = pc.freteInter || 0;
   $("editDataFreteInter").value = pc.dataFreteInter || "";
   $("editTaxaRf").value = pc.taxaRf || 0;
   $("editDataTaxaRf").value = pc.dataTaxaRf || "";
   $("editFreteNac").value = pc.freteNac || 0;
   $("editDataFreteNac").value = pc.dataFreteNac || "";
+  $("editRastreio").value = pc.rastreio || "";
   $("modalEditarCard").classList.remove("hidden");
 }
 
@@ -998,92 +1110,164 @@ async function salvarEdicaoCard() {
   pc.nome = $("editNome").value.trim();
   pc.preco = parseFloat($("editPreco").value) || 0;
   pc.local = $("editLocal").value.trim() || "Geral";
+
+  pc.pagoCard = $("editPagoCardCheck").checked;
+  pc.pagoFreteInter = $("editPagoFreteInterCheck").checked;
+  pc.pagoTaxaRf = $("editPagoTaxaRfCheck").checked;
+  pc.pagoFreteNac = $("editPagoFreteNacCheck").checked;
+
   pc.freteInter = parseFloat($("editFreteInter").value) || 0;
   pc.dataFreteInter = $("editDataFreteInter").value.trim();
   pc.taxaRf = parseFloat($("editTaxaRf").value) || 0;
   pc.dataTaxaRf = $("editDataTaxaRf").value.trim();
   pc.freteNac = parseFloat($("editFreteNac").value) || 0;
   pc.dataFreteNac = $("editDataFreteNac").value.trim();
+  pc.rastreio = $("editRastreio").value.trim();
 
-  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), pc);
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "estoque", id), pc);
+    await registrarAcaoAdmin(`Editou as informações e pagamentos do card "${pc.nome}"`);
+  }
   fecharModalEditar();
   alert("Photocard atualizado com sucesso!");
-}
-
-async function alternarPagamento(id, campo) {
-  const pc = ESTOQUE_GERAL.find(x => x.id === id);
-  if (!pc) return;
-  pc[campo] = !pc[campo];
-  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), pc);
 }
 
 async function alterarStatusEnvioCard(id, statusId) {
   const pc = ESTOQUE_GERAL.find(x => x.id === id);
   if (!pc) return;
   pc.statusEnvioId = statusId;
-  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), pc);
+  let stObj = STATUS_PERSONALIZADOS.find(s => s.id === statusId);
+  let nomeStatus = stObj ? stObj.nome : "Nenhum";
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "estoque", id), pc);
+    await registrarAcaoAdmin(`Alterou o status de envio do card "${pc.nome}" para "${nomeStatus}"`);
+  }
 }
 
 async function cadastrarJoinerAdmin() {
   let user = $("novoUser").value.trim().toLowerCase().replace(/^@/, "");
   const nome = $("novoNome").value.trim();
+  const wpp = $("novoWpp").value.trim();
   const senha = $("novaSenha").value.trim();
 
-  if (!user || !nome || !senha) return alert("Preencha todos os campos da joiner!");
+  if (!user || !nome || !senha) return alert("Preencha os campos obrigatórios da joiner!");
   if (JOINERS[user]) return alert("Essa joiner já está cadastrada!");
 
-  if (window.db) await window.setDoc(window.doc(window.db, "joiners", user), { nome, senha });
-
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "joiners", user), { nome, wpp, senha });
+    await registrarAcaoAdmin(`Cadastrou a nova cliente @${user} (${nome})`);
+  }
   $("novoUser").value = "";
   $("novoNome").value = "";
+  $("novoWpp").value = "";
   $("novaSenha").value = "";
   alert("Joiner cadastrada com sucesso!");
 }
 
-async function excluirPC(id) {
-  if (confirm("Deseja realmente excluir este photocard?")) {
-    if (window.db) await window.deleteDoc(window.doc(window.db, "estoque", id));
+async function marcarChegadoCliente(id) {
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (!pc) return;
+  if (confirm(`Deseja confirmar que o card "${pc.nome}" chegou para você?`)) {
+    if (window.db) {
+      const objHist = { ...pc, chegadoEm: Date.now() };
+      await window.setDoc(window.doc(window.db, "historico_estoque", id), objHist);
+      await window.deleteDoc(window.doc(window.db, "estoque", id));
+      await registrarAcaoAdmin(`A cliente @${clienteAtualKey} marcou o card "${pc.nome}" como Chegado (Recebido)`);
+    }
+    alert("Card marcado como recebido com sucesso!");
   }
 }
 
-function abrirModalClientes() {
-  renderizarListaTodasClientes();
-  $("modalListaClientes").classList.remove("hidden");
+async function moverCardParaHistorico(id) {
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (!pc) return;
+  if (confirm(`Deseja mover o card "${pc.nome}" para o Histórico (marcar como recebido/chegado)?`)) {
+    if (window.db) {
+      const objHist = { ...pc, chegadoEm: Date.now() };
+      await window.setDoc(window.doc(window.db, "historico_estoque", id), objHist);
+      await window.deleteDoc(window.doc(window.db, "estoque", id));
+      await registrarAcaoAdmin(`Moveu o card "${pc.nome}" para o Histórico de Chegados`);
+    }
+    alert("Photocard movido para o histórico com sucesso!");
+  }
 }
 
-function fecharModalClientes() {
-  $("modalListaClientes").classList.add("hidden");
+async function moverCardParaArquivados(id) {
+  const pc = HISTORICO_ESTOQUE.find(x => x.id === id);
+  if (!pc) return;
+  if (confirm(`Deseja arquivar definitivamente este card "${pc.nome}"?`)) {
+    if (window.db) {
+      const objArq = { ...pc, arquivadoEm: Date.now() };
+      await window.setDoc(window.doc(window.db, "arquivados_estoque", id), objArq);
+      await window.deleteDoc(window.doc(window.db, "historico_estoque", id));
+      await registrarAcaoAdmin(`Arquivou o card "${pc.nome}"`);
+    }
+    renderizarCardsHistoricoAdmin();
+    alert("Card arquivado com sucesso!");
+  }
 }
+
+async function excluirCardHistorico(id) {
+  if (confirm("Deseja apagar este registro do histórico?")) {
+    if (window.db) {
+      await window.deleteDoc(window.doc(window.db, "historico_estoque", id));
+      await registrarAcaoAdmin(`Excluiu um registro do Histórico de Cards`);
+    }
+    renderizarCardsHistoricoAdmin();
+  }
+}
+
+async function excluirCardArquivado(id) {
+  if (confirm("Deseja apagar este card arquivado permanentemente?")) {
+    if (window.db) {
+      await window.deleteDoc(window.doc(window.db, "arquivados_estoque", id));
+      await registrarAcaoAdmin(`Excluiu um card dos Arquivados`);
+    }
+    renderizarCardsHistoricoAdmin();
+  }
+}
+
+function abrirModalClientes() { renderizarListaTodasClientes(); $("modalListaClientes").classList.remove("hidden"); }
+function fecharModalClientes() { $("modalListaClientes").classList.add("hidden"); }
 
 function renderizarListaTodasClientes() {
   const clientesKeys = Object.keys(JOINERS);
   $("totalClientesCount").textContent = clientesKeys.length;
-  
   if (!clientesKeys.length) {
     $("containerListaTodasClientes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhuma joiner cadastrada ainda.</p>`;
     return;
   }
-
   let html = "";
   clientesKeys.forEach(k => {
     const cli = JOINERS[k];
     const qtdCards = ESTOQUE_GERAL.filter(x => x.status === k).length;
+    
+    let wppLimpo = (cli.wpp || "").replace(/\D/g, "");
+    let linkZapCli = wppLimpo ? `https://wa.me/55${wppLimpo.replace(/^55/, '')}` : "";
+    
     html += `
       <div class="py-3 px-1 flex items-center justify-between">
         <div>
           <span class="font-bold text-sm text-violet-700 block">@${esc(k)}</span>
-          <span class="text-xs text-slate-600">${esc(cli.nome)}</span>
+          <span class="text-xs text-slate-600 block">${esc(cli.nome)}</span>
+          ${cli.wpp ? `<span class="text-xs text-emerald-600 font-bold block mt-0.5">WhatsApp: ${esc(cli.wpp)}</span>` : ''}
           <span class="text-[11px] text-slate-400 block mt-0.5">Senha: <code class="bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">${esc(cli.senha)}</code></span>
         </div>
         <div class="flex items-center gap-2">
           <span class="px-2.5 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-bold">${qtdCards} ${qtdCards === 1 ? 'card' : 'cards'}</span>
-          <button onclick="abrirModalEditarCliente('${esc(k)}')" class="px-2.5 py-1 rounded-xl bg-violet-500 text-white text-xs font-bold hover:bg-violet-600 transition">✏️ Editar</button>
+          ${linkZapCli ? `
+            <a href="${linkZapCli}" target="_blank" class="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition flex items-center justify-center" title="Abrir WhatsApp da Cliente">
+              <i data-lucide="message-circle" class="w-4 h-4"></i>
+            </a>
+          ` : ''}
+          <button onclick="abrirModalEditarCliente('${esc(k)}')" class="px-2.5 py-1 rounded-xl bg-violet-500 text-white text-xs font-bold hover:bg-violet-600 transition">Editar</button>
           <button onclick="excluirCliente('${esc(k)}')" class="p-1 text-rose-400 hover:text-rose-600 font-bold" title="Excluir cliente">✕</button>
         </div>
       </div>
     `;
   });
   $("containerListaTodasClientes").innerHTML = html;
+  lucide.createIcons();
 }
 
 function abrirModalEditarCliente(key) {
@@ -1091,29 +1275,27 @@ function abrirModalEditarCliente(key) {
   if (!cli) return;
   $("editClientKeyOriginal").value = key;
   $("editClientUser").value = key;
-  $("editClientName").value = cli.nome;
-  $("editClientPass").value = cli.senha;
+  $("editClientName").value = cli.nome || "";
+  $("editClientWpp").value = cli.wpp || "";
+  $("editClientPass").value = cli.senha || "";
   $("modalEditarCliente").classList.remove("hidden");
 }
-
-function fecharModalEditarCliente() {
-  $("modalEditarCliente").classList.add("hidden");
-}
+function fecharModalEditarCliente() { $("modalEditarCliente").classList.add("hidden"); }
 
 async function salvarEdicaoCliente() {
   const keyOriginal = $("editClientKeyOriginal").value;
   let novoUser = $("editClientUser").value.trim().toLowerCase().replace(/^@/, "");
   const novoNome = $("editClientName").value.trim();
+  const novoWpp = $("editClientWpp").value.trim();
   const novaSenha = $("editClientPass").value.trim();
 
-  if (!novoUser || !novoNome || !novaSenha) return alert("Preencha todos os campos!");
+  if (!novoUser || !novoNome || !novaSenha) return alert("Preencha os campos obrigatórios!");
 
   if (window.db) {
     if (novoUser !== keyOriginal) {
       if (JOINERS[novoUser]) return alert("Já existe uma cliente com este novo usuário!");
-      await window.setDoc(window.doc(window.db, "joiners", novoUser), { nome: novoNome, senha: novaSenha });
+      await window.setDoc(window.doc(window.db, "joiners", novoUser), { nome: novoNome, wpp: novoWpp, senha: novaSenha });
       await window.deleteDoc(window.doc(window.db, "joiners", keyOriginal));
-
       for (let pc of ESTOQUE_GERAL) {
         if (pc.status === keyOriginal) {
           pc.status = novoUser;
@@ -1121,10 +1303,10 @@ async function salvarEdicaoCliente() {
         }
       }
     } else {
-      await window.setDoc(window.doc(window.db, "joiners", keyOriginal), { nome: novoNome, senha: novaSenha });
+      await window.setDoc(window.doc(window.db, "joiners", keyOriginal), { nome: novoNome, wpp: novoWpp, senha: novaSenha });
     }
+    await registrarAcaoAdmin(`Editou os dados da cliente @${novoUser}`);
   }
-
   fecharModalEditarCliente();
   renderizarListaTodasClientes();
   alert("Cliente atualizada com sucesso!");
@@ -1133,20 +1315,516 @@ async function salvarEdicaoCliente() {
 async function excluirCliente(key) {
   if (confirm(`Deseja realmente excluir a cliente @${key}? Os photocards dela voltarão para Standby.`)) {
     if (window.db) {
-      // Deletar documento da joiner
       await window.deleteDoc(window.doc(window.db, "joiners", key));
-
-      // Jogar os cards dela de volta para Standby
       for (let pc of ESTOQUE_GERAL) {
         if (pc.status === key) {
           pc.status = "standby";
           await window.setDoc(window.doc(window.db, "estoque", pc.id), pc);
         }
       }
+      await registrarAcaoAdmin(`Excluiu a cliente @${key}`);
     }
     renderizarListaTodasClientes();
     alert("Cliente excluída com sucesso!");
   }
+}
+
+function abrirModalComprovantesAdmin() { renderizarListaComprovantesAdmin(); $("modalComprovantesAdmin").classList.remove("hidden"); }
+function fecharModalComprovantesAdmin() { $("modalComprovantesAdmin").classList.add("hidden"); }
+
+function abrirModalHistoricoAdmin() { renderizarHistoricoComprovantesAdmin(); $("modalHistoricoAdmin").classList.remove("hidden"); }
+function fecharModalHistoricoAdmin() { $("modalHistoricoAdmin").classList.add("hidden"); }
+
+function abrirModalArquivadosAdmin() { renderizarArquivadosComprovantesAdmin(); $("modalArquivadosAdmin").classList.remove("hidden"); }
+function fecharModalArquivadosAdmin() { $("modalArquivadosAdmin").classList.add("hidden"); }
+
+function abrirModalCardsHistoricoAdmin() { renderizarCardsHistoricoAdmin(); $("modalCardsHistoricoAdmin").classList.remove("hidden"); }
+function fecharModalCardsHistoricoAdmin() { $("modalCardsHistoricoAdmin").classList.add("hidden"); }
+
+function mudarAbaCardsModal(aba) {
+  abaCardModalAtual = aba;
+  $("btnTabCardHist").className = aba === 'historico' ? "px-3 py-1.5 rounded-xl bg-violet-100 text-violet-700 text-xs font-bold" : "px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-violet-100";
+  $("btnTabCardArq").className = aba === 'arquivados' ? "px-3 py-1.5 rounded-xl bg-amber-100 text-amber-700 text-xs font-bold" : "px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-amber-100";
+  renderizarCardsHistoricoAdmin();
+}
+
+function renderizarCardsHistoricoAdmin() {
+  const container = $("containerCardsHistorico");
+  if (abaCardModalAtual === 'historico') {
+    if (!HISTORICO_ESTOQUE.length) {
+      container.innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhum photocard no histórico de chegados.</p>`;
+      return;
+    }
+    let html = "";
+    HISTORICO_ESTOQUE.sort((a,b) => (b.chegadoEm || 0) - (a.chegadoEm || 0)).forEach(pc => {
+      const dataStr = new Date(pc.chegadoEm || Date.now()).toLocaleString("pt-BR");
+      const dono = pc.status === 'standby' ? 'Standby' : pc.status === 'disponivel' ? 'Disponível na Vitrine' : `@${pc.status}`;
+
+      html += `
+        <div class="p-4 bg-violet-50/50 rounded-2xl border border-violet-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-16 h-20 rounded-xl overflow-hidden bg-white shrink-0 relative border border-violet-200">
+              <img src="${esc(pc.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(pc.foto)}')">
+            </div>
+            <div>
+              <span class="font-bold text-sm text-violet-700 block">${esc(pc.nome)}</span>
+              <span class="text-xs text-slate-500 block">Chegou em: ${dataStr}</span>
+              <span class="text-xs font-extrabold text-violet-600 mt-0.5 block">Dono/Status: ${esc(dono)}</span>
+              <span class="text-[11px] text-slate-600 block">Caixa: ${esc(pc.local || 'Geral')} | Valor: ${brl(pc.preco)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+            <a href="${esc(pc.foto)}" download="card_${esc(pc.id)}.jpg" class="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-bold transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
+            </a>
+            <button onclick="moverCardParaArquivados('${pc.id}')" class="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold transition">Arquivar</button>
+            <button onclick="excluirCardHistorico('${pc.id}')" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold transition">Apagar</button>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  } else {
+    if (!ARQUIVADOS_ESTOQUE.length) {
+      container.innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhum photocard arquivado.</p>`;
+      return;
+    }
+    let html = "";
+    ARQUIVADOS_ESTOQUE.sort((a,b) => (b.arquivadoEm || 0) - (a.arquivadoEm || 0)).forEach(pc => {
+      const dataStr = new Date(pc.arquivadoEm || Date.now()).toLocaleString("pt-BR");
+
+      html += `
+        <div class="p-4 bg-amber-50/50 rounded-2xl border border-amber-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-16 h-20 rounded-xl overflow-hidden bg-white shrink-0 relative border border-amber-200">
+              <img src="${esc(pc.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(pc.foto)}')">
+            </div>
+            <div>
+              <span class="font-bold text-sm text-amber-800 block">${esc(pc.nome)}</span>
+              <span class="text-xs text-slate-500 block">Arquivado em: ${dataStr}</span>
+              <span class="text-[11px] text-slate-600 block mt-0.5">Caixa: ${esc(pc.local || 'Geral')} | Valor: ${brl(pc.preco)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+            <a href="${esc(pc.foto)}" download="card_arquivado_${esc(pc.id)}.jpg" class="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-bold transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
+            </a>
+            <button onclick="excluirCardArquivado('${pc.id}')" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold transition">Excluir</button>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+  lucide.createIcons();
+}
+
+function abrirModalHistoricoAcoes() {
+  renderizarHistoricoAcoesAdmin();
+  $("modalHistoricoAcoes").classList.remove("hidden");
+}
+function fecharModalHistoricoAcoes() {
+  $("modalHistoricoAcoes").classList.add("hidden");
+}
+
+function renderizarHistoricoAcoesAdmin() {
+  const container = $("containerHistoricoAcoes");
+  if (!HISTORICO_ACOES.length) {
+    container.innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhuma atividade registrada ainda.</p>`;
+    return;
+  }
+  let html = "";
+  HISTORICO_ACOES.sort((a,b) => b.timestamp - a.timestamp).forEach(acao => {
+    const dataStr = new Date(acao.timestamp).toLocaleString("pt-BR");
+    const corBadge = acao.admin === 'Aiko' ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-sky-100 text-sky-700 border-sky-200';
+    html += `
+      <div class="p-3 bg-violet-50/40 rounded-2xl border border-violet-100 flex items-center justify-between gap-3 text-xs">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full font-extrabold border ${corBadge}">${esc(acao.admin)}</span>
+            <span class="text-slate-400 text-[10px]">${dataStr}</span>
+          </div>
+          <p class="text-slate-700 font-medium">${esc(acao.descricao)}</p>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function renderizarListaComprovantesAdmin() {
+  if (!COMPROVANTES.length) {
+    $("containerListaComprovantes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhum comprovante pendente no momento.</p>`;
+    return;
+  }
+  let html = "";
+  COMPROVANTES.sort((a,b) => b.timestamp - a.timestamp).forEach(comp => {
+    const cli = JOINERS[comp.clienteKey];
+    const nomeCli = cli ? cli.nome : comp.clienteKey;
+    const dataStr = new Date(comp.timestamp).toLocaleString("pt-BR");
+
+    html += `
+      <div class="p-4 bg-violet-50/50 rounded-2xl border border-violet-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-16 h-20 rounded-xl overflow-hidden bg-white shrink-0 relative border border-violet-200">
+            <img src="${esc(comp.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(comp.foto)}')">
+          </div>
+          <div>
+            <span class="font-bold text-sm text-violet-700 block">@${esc(comp.clienteKey)} (${esc(nomeCli)})</span>
+            <span class="text-xs text-slate-500 block">Enviado em: ${dataStr}</span>
+            <span class="text-xs font-extrabold text-violet-600 mt-1 block">Total: ${brl(comp.total)}</span>
+            <span class="text-[11px] text-slate-600 block mt-0.5">Itens: ${comp.itensNomes.join(", ")}</span>
+            ${comp.obs ? `<div class="mt-1 text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">Obs: <b>${esc(comp.obs)}</b></div>` : ''}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+          <a href="${esc(comp.foto)}" download="comprovante_${esc(comp.clienteKey)}.jpg" class="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-bold transition flex items-center gap-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
+          </a>
+          <button onclick="aprovarComprovanteAdmin('${comp.id}')" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition">Aprovar</button>
+          <button onclick="abrirModalRejeicao('${comp.id}')" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition">Rejeitar</button>
+        </div>
+      </div>
+    `;
+  });
+  $("containerListaComprovantes").innerHTML = html;
+  lucide.createIcons();
+}
+
+function renderizarHistoricoComprovantesAdmin() {
+  const todosComprovantes = HISTORICO_COMPROVANTES;
+  if (!todosComprovantes.length) {
+    $("containerHistoricoComprovantes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhum comprovante no histórico ainda.</p>`;
+    return;
+  }
+  let html = "";
+  todosComprovantes.sort((a,b) => (b.acaoEm || b.timestamp) - (a.acaoEm || a.timestamp)).forEach(comp => {
+    const cli = JOINERS[comp.clienteKey];
+    const nomeCli = cli ? cli.nome : comp.clienteKey;
+    const dataStr = new Date(comp.acaoEm || comp.timestamp).toLocaleString("pt-BR");
+    
+    let badgeStatus = "";
+    let motivoRejeicaoHtml = "";
+
+    let wppLimpo = cli && cli.wpp ? cli.wpp.replace(/\D/g, "") : "";
+    let linkZap = "";
+
+    if (comp.statusAprovacao === 'aprovado') {
+      badgeStatus = `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">Aprovado</span>`;
+      linkZap = wppLimpo ? `https://wa.me/55${wppLimpo.replace(/^55/, '')}?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Seu pagamento no valor de ${brl(comp.total)} referente a (${comp.itensNomes.join(", ")}) foi aprovado! Muito obrigada!`) : `https://wa.me/?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Seu pagamento no valor de ${brl(comp.total)} referente a (${comp.itensNomes.join(", ")}) foi aprovado! Muito obrigada!`);
+    } else {
+      badgeStatus = `<span class="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold">Rejeitado</span>`;
+      if (comp.motivoRejeicao) {
+        motivoRejeicaoHtml = `<div class="mt-1 text-xs text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">Motivo: <b>${esc(comp.motivoRejeicao)}</b></div>`;
+      }
+      linkZap = wppLimpo ? `https://wa.me/55${wppLimpo.replace(/^55/, '')}?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Sobre o comprovante enviado no valor de ${brl(comp.total)}, ele precisou ser rejeitado pelo seguinte motivo: *${comp.motivoRejeicao || 'Não especificado'}*. Poderia verificar, por favor?`) : `https://wa.me/?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Sobre o comprovante enviado no valor de ${brl(comp.total)}, ele precisou ser rejeitado pelo seguinte motivo: *${comp.motivoRejeicao || 'Não especificado'}*. Poderia verificar, por favor?`);
+    }
+
+    html += `
+      <div class="p-4 bg-violet-50/50 rounded-2xl border border-violet-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-16 h-20 rounded-xl overflow-hidden bg-white shrink-0 relative border border-violet-200">
+            <img src="${esc(comp.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(comp.foto)}')">
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-bold text-sm text-violet-700">@${esc(comp.clienteKey)} (${esc(nomeCli)})</span>
+              ${badgeStatus}
+            </div>
+            <span class="text-xs text-slate-500 block">Data: ${dataStr}</span>
+            <span class="text-xs font-extrabold text-violet-600 mt-1 block">Total: ${brl(comp.total)}</span>
+            <span class="text-[11px] text-slate-600 block mt-0.5">Itens: ${comp.itensNomes.join(", ")}</span>
+            ${motivoRejeicaoHtml}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+          <a href="${esc(comp.foto)}" download="comprovante_${esc(comp.clienteKey)}.jpg" class="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-bold transition flex items-center gap-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
+          </a>
+          <a href="${linkZap}" target="_blank" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition">
+            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp
+          </a>
+          <button onclick="arquivarComprovanteHistorico('${comp.id}')" class="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold transition">Arquivar</button>
+        </div>
+      </div>
+    `;
+  });
+  $("containerHistoricoComprovantes").innerHTML = html;
+  lucide.createIcons();
+}
+
+function renderizarArquivadosComprovantesAdmin() {
+  const todosArquivados = ARQUIVADOS_COMPROVANTES;
+  if (!todosArquivados.length) {
+    $("containerArquivadosComprovantes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhum comprovante arquivado no momento.</p>`;
+    return;
+  }
+  let html = "";
+  todosArquivados.sort((a,b) => (b.arquivadoEm || b.timestamp) - (a.arquivadoEm || a.timestamp)).forEach(comp => {
+    const cli = JOINERS[comp.clienteKey];
+    const nomeCli = cli ? cli.nome : comp.clienteKey;
+    const dataStr = new Date(comp.arquivadoEm || comp.timestamp).toLocaleString("pt-BR");
+
+    let motivoRejeicaoHtml = comp.motivoRejeicao ? `<div class="mt-1 text-xs text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">Motivo: <b>${esc(comp.motivoRejeicao)}</b></div>` : '';
+
+    html += `
+      <div class="p-4 bg-amber-50/50 rounded-2xl border border-amber-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-16 h-20 rounded-xl overflow-hidden bg-white shrink-0 relative border border-amber-200">
+            <img src="${esc(comp.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(comp.foto)}')">
+          </div>
+          <div>
+            <span class="font-bold text-sm text-amber-800 block">@${esc(comp.clienteKey)} (${esc(nomeCli)})</span>
+            <span class="text-xs text-slate-500 block">Arquivado em: ${dataStr}</span>
+            <span class="text-xs font-extrabold text-amber-700 mt-1 block">Total: ${brl(comp.total)}</span>
+            <span class="text-[11px] text-slate-600 block mt-0.5">Itens: ${comp.itensNomes.join(", ")}</span>
+            ${motivoRejeicaoHtml}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+          <a href="${esc(comp.foto)}" download="comprovante_arquivado_${esc(comp.clienteKey)}.jpg" class="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-bold transition flex items-center gap-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
+          </a>
+        </div>
+      </div>
+    `;
+  });
+  $("containerArquivadosComprovantes").innerHTML = html;
+  lucide.createIcons();
+}
+
+function interpretarChaveItem(itemKey) {
+  const m = String(itemKey).match(/^(.*)_(card|inter|rf|nac)$/);
+  if (m) return { cardId: m[1], subTipo: m[2] };
+  return { cardId: String(itemKey), subTipo: "card" };
+}
+
+async function aprovarComprovanteAdmin(compId) {
+  const comp = COMPROVANTES.find(x => x.id === compId);
+  if (!comp) return;
+
+  if (confirm(`Deseja aprovar este comprovante e marcar os itens selecionados como pagos?`)) {
+    if (window.db) {
+      for (let itemKey of (comp.itensKeys || [])) {
+        const { cardId, subTipo } = interpretarChaveItem(itemKey);
+
+        const pc = ESTOQUE_GERAL.find(x => x.id === cardId);
+        if (pc) {
+          if (subTipo === 'card') {
+            pc.pagoCard = true;
+          } else if (subTipo === 'inter') {
+            pc.pagoFreteInter = true;
+          } else if (subTipo === 'rf') {
+            pc.pagoTaxaRf = true;
+          } else if (subTipo === 'nac') {
+            pc.pagoFreteNac = true;
+          }
+          await window.setDoc(window.doc(window.db, "estoque", pc.id), pc);
+        }
+      }
+
+      const historicoObj = {
+        ...comp,
+        statusAprovacao: 'aprovado',
+        acaoEm: Date.now()
+      };
+      await window.setDoc(window.doc(window.db, "historico_comprovantes", compId), historicoObj);
+      await window.deleteDoc(window.doc(window.db, "comprovantes", compId));
+      await registrarAcaoAdmin(`Aprovou o comprovante de pagamento da cliente @${comp.clienteKey} (${brl(comp.total)})`);
+    }
+    alert("Pagamento aprovado e itens marcados como pagos!");
+    renderizarListaComprovantesAdmin();
+  }
+}
+
+function abrirModalRejeicao(compId) {
+  $("rejeicaoCompId").value = compId;
+  $("inputMotivoRejeicao").value = "";
+  $("modalRejeicao").classList.remove("hidden");
+  setTimeout(() => $("inputMotivoRejeicao").focus(), 100);
+}
+
+function fecharModalRejeicao() {
+  $("modalRejeicao").classList.add("hidden");
+  $("rejeicaoCompId").value = "";
+}
+
+async function confirmarRejeicaoComprovante() {
+  const compId = $("rejeicaoCompId").value;
+  const motivo = $("inputMotivoRejeicao").value.trim();
+  if (!motivo) return alert("Por favor, digite o motivo da rejeição!");
+
+  const comp = COMPROVANTES.find(x => x.id === compId);
+  if (!comp) return;
+
+  if (window.db) {
+    const historicoObj = {
+      ...comp,
+      statusAprovacao: 'rejeitado',
+      motivoRejeicao: motivo,
+      acaoEm: Date.now()
+    };
+    await window.setDoc(window.doc(window.db, "historico_comprovantes", compId), historicoObj);
+    await window.deleteDoc(window.doc(window.db, "comprovantes", compId));
+    await registrarAcaoAdmin(`Rejeitou o comprovante da cliente @${comp.clienteKey} (Motivo: ${motivo})`);
+  }
+  fecharModalRejeicao();
+  alert("Comprovante rejeitado com sucesso!");
+  renderizarListaComprovantesAdmin();
+}
+
+async function arquivarComprovanteHistorico(compId) {
+  const comp = HISTORICO_COMPROVANTES.find(x => x.id === compId);
+  if (!comp) return;
+
+  if (confirm("Deseja mover este comprovante para os Arquivados?")) {
+    if (window.db) {
+      const arquivadoObj = {
+        ...comp,
+        arquivadoEm: Date.now()
+      };
+      await window.setDoc(window.doc(window.db, "arquivados_comprovantes", compId), arquivadoObj);
+      await window.deleteDoc(window.doc(window.db, "historico_comprovantes", compId));
+      await registrarAcaoAdmin(`Arquivou o comprovante de @${comp.clienteKey}`);
+    }
+    alert("Comprovante arquivado com sucesso!");
+    renderizarHistoricoComprovantesAdmin();
+  }
+}
+
+function abrirModalEnviarComprovante() {
+  const meusPCs = ESTOQUE_GERAL.filter(x => x.status === clienteAtualKey);
+  let html = "";
+  let temPendencias = false;
+
+  meusPCs.forEach(p => {
+    const precoCard = Number(p.preco) || 0;
+    const fInter = Number(p.freteInter) || 0;
+    const tRf = Number(p.taxaRf) || 0;
+    const fNac = Number(p.freteNac) || 0;
+
+    if (!p.pagoCard && precoCard > 0) {
+      temPendencias = true;
+      html += `
+        <label class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-violet-100 cursor-pointer hover:border-violet-300 transition">
+          <div class="flex items-center gap-2.5">
+            <input type="checkbox" value="${p.id}_card" data-total="${precoCard}" data-nome="Card: ${esc(p.nome)}" onchange="calcularTotalComprovanteCliente()" class="rounded accent-violet-600 w-4 h-4 checkComprovanteItem">
+            <div>
+              <span class="font-bold text-xs text-slate-800 block">${esc(p.nome)} <span class="text-rose-500 text-[10px]">(Card Pendente)</span></span>
+              <span class="text-[10px] text-slate-400">Caixa: ${esc(p.local)}</span>
+            </div>
+          </div>
+          <span class="text-xs font-bold text-violet-600">${brl(precoCard)}</span>
+        </label>
+      `;
+    }
+
+    if (fInter > 0 && !p.pagoFreteInter) {
+      temPendencias = true;
+      html += `
+        <label class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-violet-100 cursor-pointer hover:border-violet-300 transition">
+          <div class="flex items-center gap-2.5">
+            <input type="checkbox" value="${p.id}_inter" data-total="${fInter}" data-nome="Frete Inter de ${esc(p.nome)}" onchange="calcularTotalComprovanteCliente()" class="rounded accent-violet-600 w-4 h-4 checkComprovanteItem">
+            <div>
+              <span class="font-bold text-xs text-slate-800 block">Frete Internacional <span class="text-rose-500 text-[10px]">(Pendente)</span></span>
+              <span class="text-[10px] text-slate-400">${esc(p.nome)}</span>
+            </div>
+          </div>
+          <span class="text-xs font-bold text-violet-600">${brl(fInter)}</span>
+        </label>
+      `;
+    }
+
+    if (tRf > 0 && !p.pagoTaxaRf) {
+      temPendencias = true;
+      html += `
+        <label class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-violet-100 cursor-pointer hover:border-violet-300 transition">
+          <div class="flex items-center gap-2.5">
+            <input type="checkbox" value="${p.id}_rf" data-total="${tRf}" data-nome="Taxa RF de ${esc(p.nome)}" onchange="calcularTotalComprovanteCliente()" class="rounded accent-violet-600 w-4 h-4 checkComprovanteItem">
+            <div>
+              <span class="font-bold text-xs text-slate-800 block">Taxa RF <span class="text-rose-500 text-[10px]">(Pendente)</span></span>
+              <span class="text-[10px] text-slate-400">${esc(p.nome)}</span>
+            </div>
+          </div>
+          <span class="text-xs font-bold text-violet-600">${brl(tRf)}</span>
+        </label>
+      `;
+    }
+
+    if (fNac > 0 && !p.pagoFreteNac) {
+      temPendencias = true;
+      html += `
+        <label class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-violet-100 cursor-pointer hover:border-violet-300 transition">
+          <div class="flex items-center gap-2.5">
+            <input type="checkbox" value="${p.id}_nac" data-total="${fNac}" data-nome="Frete Nacional de ${esc(p.nome)}" onchange="calcularTotalComprovanteCliente()" class="rounded accent-violet-600 w-4 h-4 checkComprovanteItem">
+            <div>
+              <span class="font-bold text-xs text-slate-800 block">Frete Nacional <span class="text-rose-500 text-[10px]">(Pendente)</span></span>
+              <span class="text-[10px] text-slate-400">${esc(p.nome)}</span>
+            </div>
+          </div>
+          <span class="text-xs font-bold text-violet-600">${brl(fNac)}</span>
+        </label>
+      `;
+    }
+  });
+
+  if (!temPendencias) return alert("Você não possui nenhum pagamento pendente no momento!");
+
+  $("listaItensPendentesComprovante").innerHTML = html;
+  $("spanTotalComprovante").textContent = brl(0);
+  $("inputObsComprovante").value = "";
+  $("inputFotoComprovante").value = "";
+  $("modalEnviarComprovante").classList.remove("hidden");
+}
+
+function fecharModalEnviarComprovante() { $("modalEnviarComprovante").classList.add("hidden"); }
+
+function calcularTotalComprovanteCliente() {
+  let total = 0;
+  document.querySelectorAll('.checkComprovanteItem:checked').forEach(cb => {
+    total += parseFloat(cb.getAttribute('data-total')) || 0;
+  });
+  $("spanTotalComprovante").textContent = brl(total);
+}
+
+async function enviarComprovanteCliente() {
+  const checkboxes = document.querySelectorAll('.checkComprovanteItem:checked');
+  if (!checkboxes.length) return alert("Selecione ao menos um item para vincular ao comprovante!");
+
+  const fileInput = $("inputFotoComprovante");
+  if (!fileInput.files || !fileInput.files[0]) return alert("Por favor, envie a foto ou print do comprovante!");
+
+  let itensKeys = [];
+  let itensNomes = [];
+  let total = 0;
+
+  checkboxes.forEach(cb => {
+    itensKeys.push(cb.value);
+    itensNomes.push(cb.getAttribute('data-nome'));
+    total += parseFloat(cb.getAttribute('data-total')) || 0;
+  });
+
+  const obs = $("inputObsComprovante").value.trim();
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const comprovanteId = "comp_" + Date.now();
+    const novoComprovante = {
+      id: comprovanteId,
+      clienteKey: clienteAtualKey,
+      itensKeys,
+      itensNomes,
+      total,
+      obs,
+      foto: e.target.result,
+      timestamp: Date.now()
+    };
+
+    if (window.db) await window.setDoc(window.doc(window.db, "comprovantes", comprovanteId), novoComprovante);
+    fecharModalEnviarComprovante();
+    alert("Comprovante enviado com sucesso para a loja!");
+  };
+  reader.readAsDataURL(fileInput.files[0]);
 }
 
 function abrirModalStatus(id) {
@@ -1156,11 +1834,7 @@ function abrirModalStatus(id) {
   $("modalStatus").classList.remove("hidden");
   setTimeout(() => $("inputFiltroCliente").focus(), 100);
 }
-
-function fecharModalStatus() {
-  $("modalStatus").classList.add("hidden");
-  cardEditandoId = null;
-}
+function fecharModalStatus() { $("modalStatus").classList.add("hidden"); cardEditandoId = null; }
 
 function filtrarListaClientesModal(termo) { renderizarListaClientesModal(termo.toLowerCase()); }
 
@@ -1193,7 +1867,10 @@ async function alterarStatusModal(novoStatus) {
   const pc = ESTOQUE_GERAL.find(x => x.id === cardEditandoId);
   if (!pc) return;
   pc.status = novoStatus;
-  if (window.db) await window.setDoc(window.doc(window.db, "estoque", cardEditandoId), pc);
+  if (window.db) {
+    await window.setDoc(window.doc(window.db, "estoque", cardEditandoId), pc);
+    await registrarAcaoAdmin(`Alterou o dono do card "${pc.nome}" para @${novoStatus}`);
+  }
   fecharModalStatus();
   renderTabelaAdmin();
 }
@@ -1205,7 +1882,7 @@ function toggleCaixaAdmin(nomeCaixa) {
 
 function renderTabelaAdmin() {
   if (!ESTOQUE_GERAL.length) {
-    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-3xl p-6 text-center text-slate-400 border border-violet-100">Nenhum photocard cadastrado no estoque ainda.</div>`;
+    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-2xl p-4 text-center text-slate-400 border border-violet-100 text-xs">Nenhum photocard cadastrado no estoque ainda.</div>`;
     return;
   }
 
@@ -1225,7 +1902,7 @@ function renderTabelaAdmin() {
   });
 
   if (Object.keys(caixasMap).length === 0) {
-    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-3xl p-6 text-center text-slate-400 border border-violet-100">Nenhum photocard encontrado com esse filtro.</div>`;
+    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-2xl p-4 text-center text-slate-400 border border-violet-100 text-xs">Nenhum photocard encontrado com esse filtro.</div>`;
     return;
   }
 
@@ -1238,39 +1915,31 @@ function renderTabelaAdmin() {
     let tabelaItensHtml = "";
     if (aberta) {
       tabelaItensHtml = `
-        <div class="overflow-x-auto p-4 bg-violet-50/30">
+        <div class="overflow-x-auto p-3 bg-violet-50/30">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="border-b border-violet-100 text-xs font-bold text-violet-400 uppercase">
-                <th class="py-3 px-2">Foto</th>
-                <th class="py-3 px-2">Nome / Preço & Pagamento</th>
-                <th class="py-3 px-2">Joiner / Disponível</th>
-                <th class="py-3 px-2 text-right">Ações</th>
+              <tr class="border-b border-violet-100 text-[11px] font-bold text-violet-400 uppercase">
+                <th class="py-2 px-2">Foto</th>
+                <th class="py-2 px-2">Nome / Preço & Pagamento</th>
+                <th class="py-2 px-2">Joiner / Disponível</th>
+                <th class="py-2 px-2 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody class="text-sm divide-y divide-violet-50">
+            <tbody class="text-xs divide-y divide-violet-50">
               ${listaItens.map(pc => {
                 let badgeStatus = "";
                 if (pc.status === 'standby') {
-                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-800 font-bold text-xs">⏳ Standby (Oculto)</span>`;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-100 text-amber-800 font-bold text-[11px]">Standby (Oculto)</span>`;
                 } else if (pc.status === 'disponivel') {
-                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs">✨ Disponível (Vitrine)</span>`;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-[11px]">Disponível (Vitrine)</span>`;
                 } else {
                   const cli = JOINERS[pc.status];
                   const nomeCli = cli ? cli.nome : pc.status;
-                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-100 text-violet-800 font-bold text-xs">👤 @${esc(pc.status)} (${esc(nomeCli)})</span>`;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-violet-100 text-violet-800 font-bold text-[11px]">@${esc(pc.status)} (${esc(nomeCli)})</span>`;
                 }
 
-                const btnPagoCard = `<button onclick="alternarPagamento('${pc.id}', 'pagoCard')" class="px-2 py-0.5 rounded text-[10px] font-bold ${pc.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoCard ? 'Pago' : 'Não pago'}</button>`;
+                const badgePagoCard = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold select-none ${pc.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoCard ? 'Pago' : 'Não pago'}</span>`;
                 
-                const fInter = Number(pc.freteInter) || 0;
-                const tRf = Number(pc.taxaRf) || 0;
-                const fNac = Number(pc.freteNac) || 0;
-
-                const btnPagoFInter = fInter > 0 ? `<button onclick="alternarPagamento('${pc.id}', 'pagoFreteInter')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${pc.pagoFreteInter ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoFreteInter ? 'Pago' : 'Não pago'}</button>` : '';
-                const btnPagoTRf = tRf > 0 ? `<button onclick="alternarPagamento('${pc.id}', 'pagoTaxaRf')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${pc.pagoTaxaRf ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoTaxaRf ? 'Pago' : 'Não pago'}</button>` : '';
-                const btnPagoFNac = fNac > 0 ? `<button onclick="alternarPagamento('${pc.id}', 'pagoFreteNac')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${pc.pagoFreteNac ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoFreteNac ? 'Pago' : 'Não pago'}</button>` : '';
-
                 let statusOptions = `<option value="">Nenhum status</option>`;
                 STATUS_PERSONALIZADOS.forEach(s => {
                   statusOptions += `<option value="${s.id}" ${pc.statusEnvioId === s.id ? 'selected' : ''}>${s.nome}</option>`;
@@ -1278,34 +1947,30 @@ function renderTabelaAdmin() {
 
                 return `
                   <tr class="hover:bg-violet-50/40 transition">
-                    <td class="py-3 px-2 w-14">
-                      <div class="w-12 h-16 rounded-xl overflow-hidden relative shadow-sm">${renderImgBox(pc.foto, pc.id)}</div>
+                    <td class="py-2.5 px-2 w-12">
+                      <div class="w-10 h-14 rounded-xl overflow-hidden relative shadow-sm">${renderImgBox(pc.foto, pc.id)}</div>
                     </td>
-                    <td class="py-3 px-2">
+                    <td class="py-2.5 px-2">
                       <div class="font-bold text-slate-700">${esc(pc.nome)}</div>
-                      <div class="text-xs text-violet-600 font-bold flex items-center gap-2 mt-0.5">
-                        ${brl(pc.preco)} ${btnPagoCard}
+                      <div class="text-[11px] text-violet-600 font-bold flex items-center gap-2 mt-0.5">
+                        ${brl(pc.preco)} ${badgePagoCard}
                       </div>
-                      <div class="mt-1.5 text-[11px] text-slate-500 space-y-1">
-                        ${fInter > 0 ? `<div>Frete Inter: <b>${brl(fInter)}</b> ${btnPagoFInter}</div>` : ''}
-                        ${tRf > 0 ? `<div>Taxa RF: <b>${brl(tRf)}</b> ${btnPagoTRf}</div>` : ''}
-                        ${fNac > 0 ? `<div>Frete Nac: <b>${brl(fNac)}</b> ${btnPagoFNac}</div>` : ''}
-                      </div>
-                      <div class="mt-2">
-                        <select onchange="alterarStatusEnvioCard('${pc.id}', this.value)" class="text-[11px] px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 font-bold text-violet-700">
+                      <div class="mt-1.5">
+                        <select onchange="alterarStatusEnvioCard('${pc.id}', this.value)" class="text-[10px] px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 font-bold text-violet-700">
                           ${statusOptions}
                         </select>
                       </div>
                     </td>
-                    <td class="py-3 px-2">
-                      <button onclick="abrirModalStatus('${pc.id}')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-violet-200 shadow-sm hover:bg-violet-50 transition text-xs font-bold text-violet-700">
+                    <td class="py-2.5 px-2">
+                      <button onclick="abrirModalStatus('${pc.id}')" class="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white border border-violet-200 shadow-sm hover:bg-violet-50 transition text-[11px] font-bold text-violet-700">
                         ${badgeStatus}
-                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 ml-1"></i>
+                        <i data-lucide="chevron-down" class="w-3 h-3 ml-1"></i>
                       </button>
                     </td>
-                    <td class="py-3 px-2 text-right space-x-1">
-                      <button onclick="abrirModalEditar('${pc.id}')" class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-600 text-xs font-bold hover:bg-violet-200 transition">✏️ Editar</button>
-                      <button onclick="excluirPC('${pc.id}')" class="text-rose-400 hover:text-rose-600 font-bold p-1" title="Excluir item">✕</button>
+                    <td class="py-2.5 px-2 text-right space-x-1">
+                      <button onclick="abrirModalEditar('${pc.id}')" class="px-2 py-1 rounded-lg bg-violet-100 text-violet-600 text-[11px] font-bold hover:bg-violet-200 transition">Editar</button>
+                      <button onclick="moverCardParaHistorico('${pc.id}')" class="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold hover:bg-emerald-200 transition">Chegou</button>
+                      <button onclick="excluirPC('${pc.id}')" class="text-rose-400 hover:text-rose-600 font-bold p-1">✕</button>
                     </td>
                   </tr>
                 `;
@@ -1317,22 +1982,31 @@ function renderTabelaAdmin() {
     }
 
     htmlCaixas += `
-      <div class="bg-white rounded-3xl shadow-md shadow-violet-100 border border-violet-100 overflow-hidden mb-4">
-        <button onclick="toggleCaixaAdmin('${esc(caixaNome)}')" class="w-full px-5 py-4 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
-          <div class="flex items-center gap-2.5">
-            <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
-            <span class="font-bold text-base text-violet-800">${esc(caixaNome)}</span>
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
+      <div class="bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden mb-3">
+        <button onclick="toggleCaixaAdmin('${esc(caixaNome)}')" class="w-full px-4 py-3 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
+          <div class="flex items-center gap-2">
+            <i data-lucide="package" class="w-4 h-4 text-violet-600"></i>
+            <span class="font-bold text-xs text-violet-800">${esc(caixaNome)}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
           </div>
-          <i data-lucide="chevron-down" class="w-5 h-5 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
         </button>
         ${tabelaItensHtml}
       </div>
     `;
   }
-
   $("containerTabelaAdmin").innerHTML = htmlCaixas;
   lucide.createIcons();
+}
+
+async function excluirPC(id) {
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (confirm("Deseja realmente excluir este photocard?")) {
+    if (window.db) {
+      await window.deleteDoc(window.doc(window.db, "estoque", id));
+      if (pc) await registrarAcaoAdmin(`Excluiu o card "${pc.nome}" do estoque`);
+    }
+  }
 }
 
 function gerarLinkZap(p) {
@@ -1352,7 +2026,6 @@ function toggleDropdownFiltroExcel() {
   drop.classList.toggle("hidden");
   if (!drop.classList.contains("hidden")) popularListasExcel("");
 }
-
 function fecharDropdownFiltroExcel() { $("dropdownFiltroExcel").classList.add("hidden"); }
 
 function extrairPartesNome(nome) {
@@ -1466,41 +2139,32 @@ function renderVitrineDisponiveis() {
   });
 
   if (!disponiveis.length) {
-    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full text-center py-8">Nenhum item disponível encontrado 💜</p>`;
+    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full text-center py-8 text-xs">Nenhum item disponível encontrado</p>`;
     return;
   }
 
   if (layoutVitrineAtual === 'grid') {
-    $("gridDisponiveis").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">${disponiveis.map(p => {
+    $("gridDisponiveis").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">${disponiveis.map(p => {
       const precoCard = Number(p.preco) || 0;
-      const fInter = Number(p.freteInter) || 0;
-      const tRf = Number(p.taxaRf) || 0;
-      const fNac = Number(p.freteNac) || 0;
-      const totalItem = precoCard + fInter + tRf + fNac;
-
-      const txtFInter = fInter > 0 ? `<div class="text-xs text-slate-600">Frete Inter: <b>${brl(fInter)}</b></div>` : '';
-      const txtTRf = tRf > 0 ? `<div class="text-xs text-slate-600">Taxa RF: <b>${brl(tRf)}</b></div>` : '';
-      const txtFNac = fNac > 0 ? `<div class="text-xs text-slate-600">Frete Nac: <b>${brl(fNac)}</b></div>` : '';
+      const totalItem = precoCard + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
 
       return `
-        <article class="bg-white rounded-3xl overflow-hidden shadow-md shadow-violet-100 border border-violet-100 flex flex-col justify-between">
+        <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
           <div>
-            <div class="px-3 py-1.5 bg-gradient-to-r from-violet-100 to-sky-100 text-[10px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
+            <div class="px-2.5 py-1 bg-gradient-to-r from-violet-100 to-sky-100 text-[9px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
               <i data-lucide="package" class="w-3 h-3"></i>${esc(p.local)}
             </div>
             <div class="aspect-[3/4] relative bg-violet-50">
-              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-3xl text-violet-300">🎴</div>`}
             </div>
-            <div class="p-3">
-              <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
-              <div class="mt-2 text-xs text-slate-600">Card: <b>${brl(precoCard)}</b></div>
-              <div class="mt-1 space-y-0.5">${txtFInter}${txtTRf}${txtFNac}</div>
-              <div class="mt-3 pt-2 border-t border-violet-100 text-base font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
+            <div class="p-2.5">
+              <h3 class="font-bold text-xs leading-tight">${esc(p.nome)}</h3>
+              <div class="mt-1.5 text-xs font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
             </div>
           </div>
-          <div class="p-3 pt-0">
-            <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
-              <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
+          <div class="p-2.5 pt-0">
+            <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm transition">
+              <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Comprar
             </a>
           </div>
         </article>
@@ -1508,26 +2172,22 @@ function renderVitrineDisponiveis() {
     }).join("")}</div>`;
   } else {
     $("gridDisponiveis").innerHTML = `<div class="space-y-2">${disponiveis.map(p => {
-      const precoCard = Number(p.preco) || 0;
-      const fInter = Number(p.freteInter) || 0;
-      const tRf = Number(p.taxaRf) || 0;
-      const fNac = Number(p.freteNac) || 0;
-      const totalItem = precoCard + fInter + tRf + fNac;
+      const totalItem = (Number(p.preco) || 0) + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
 
       return `
-        <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-16 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
-              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
+        <article class="bg-white rounded-xl shadow-sm border border-violet-100 p-2.5 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-14 rounded-lg overflow-hidden bg-violet-50 shrink-0 relative">
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-base text-violet-300">🎴</div>`}
             </div>
             <div>
-              <span class="text-[10px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
-              <h3 class="font-bold text-sm text-slate-800 mt-1">${esc(p.nome)}</h3>
-              <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
+              <span class="text-[9px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
+              <h3 class="font-bold text-xs text-slate-800 mt-0.5">${esc(p.nome)}</h3>
+              <p class="text-xs font-bold text-violet-600 mt-0.5">${brl(totalItem)}</p>
             </div>
           </div>
-          <a href="${gerarLinkZap(p)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0">
-            <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
+          <a href="${gerarLinkZap(p)}" target="_blank" class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition shrink-0">
+            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Comprar
           </a>
         </article>
       `;
@@ -1547,7 +2207,8 @@ function login(e) {
 
   clienteAtualKey = key;
   $("nomeJoiner").textContent = j.nome;
-  tab(1);
+  $("inputBusca").value = "";
+  renderizarConteudoCliente();
   show("joiner");
 }
 
@@ -1558,152 +2219,139 @@ function mudarLayout(tipo) {
   renderizarConteudoCliente();
 }
 
-function tab(n) {
-  abaAtualJoiner = n;
-  $("tab1").classList.toggle("on", n === 1);
-  $("tab2").classList.toggle("on", n === 2);
-  $("inputBusca").value = "";
-  renderizarConteudoCliente();
-}
-
 function atualizarFiltroJoiner() { renderizarConteudoCliente(); }
 function toggleCaixa(nomeCaixa) {
   caixasExpandidas[nomeCaixa] = !caixasExpandidas[nomeCaixa];
   renderizarConteudoCliente();
 }
 
+function selo(pago, tamanho = "text-[9px]") {
+  return `<span class="px-1.5 py-0.5 rounded ${tamanho} font-bold select-none ${pago ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pago ? 'Pago' : 'Pendente'}</span>`;
+}
+
 function renderizarConteudoCliente() {
   const busca = $("inputBusca").value.toLowerCase();
-  
-  if (abaAtualJoiner === 1) {
-    renderVitrineDisponiveis();
+  let meusPCs = ESTOQUE_GERAL.filter(x => x.status === clienteAtualKey);
+  if (busca) meusPCs = meusPCs.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
+
+  let botaoComprovanteHtml = `
+    <div class="mb-3 flex justify-end shrink-0">
+      <button onclick="abrirModalEnviarComprovante()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 text-white font-bold text-xs shadow-sm hover:brightness-105 transition">
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Enviar Comprovante de Pagamento
+      </button>
+    </div>
+  `;
+
+  if (!meusPCs.length) {
+    $("containerAreaCliente").innerHTML = `${botaoComprovanteHtml}<p class="text-slate-400 text-center py-6 text-xs">Você ainda não tem itens comprados vinculados</p>`;
+    lucide.createIcons();
     return;
-  } else {
-    let meusPCs = ESTOQUE_GERAL.filter(x => x.status === clienteAtualKey);
-    if (busca) meusPCs = meusPCs.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
-
-    if (!meusPCs.length) {
-      $("containerAreaCliente").innerHTML = `<p class="text-slate-400">Você ainda não tem itens comprados vinculados 💜</p>`;
-      return;
-    }
-
-    let caixasMap = {};
-    meusPCs.forEach(p => {
-      const caixaNome = p.local || "Geral";
-      if (!caixasMap[caixaNome]) caixasMap[caixaNome] = [];
-      caixasMap[caixaNome].push(p);
-    });
-
-    let htmlCaixas = "";
-    for (let caixaNome in caixasMap) {
-      const listaItens = caixasMap[caixaNome];
-      const qtd = listaItens.length;
-      const aberta = caixasExpandidas[caixaNome] !== false;
-
-      let conteudoCaixaHtml = "";
-      if (aberta) {
-        if (layoutAtual === 'grid') {
-          conteudoCaixaHtml = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-violet-50/30">${listaItens.map(p => {
-            const precoCard = Number(p.preco) || 0;
-            const fInter = Number(p.freteInter) || 0;
-            const tRf = Number(p.taxaRf) || 0;
-            const fNac = Number(p.freteNac) || 0;
-            const totalItem = precoCard + fInter + tRf + fNac;
-            
-            const badgeCard = `<button onclick="alternarPagamento('${p.id}', 'pagoCard')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoCard ? 'Pago' : 'Pendente'}</button>`;
-            
-            const badgeFInter = fInter > 0 ? `
-              <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
-                <span>Frete Inter: <b>${brl(fInter)}</b> ${p.dataFreteInter ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataFreteInter)})</span>` : ''}</span>
-                <button onclick="alternarPagamento('${p.id}', 'pagoFreteInter')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoFreteInter ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoFreteInter ? 'Pago' : 'Pendente'}</button>
-              </div>` : '';
-
-            const badgeTRf = tRf > 0 ? `
-              <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
-                <span>Taxa RF: <b>${brl(tRf)}</b> ${p.dataTaxaRf ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataTaxaRf)})</span>` : ''}</span>
-                <button onclick="alternarPagamento('${p.id}', 'pagoTaxaRf')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoTaxaRf ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoTaxaRf ? 'Pago' : 'Pendente'}</button>
-              </div>` : '';
-
-            const badgeFNac = fNac > 0 ? `
-              <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
-                <span>Frete Nac: <b>${brl(fNac)}</b> ${p.dataFreteNac ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataFreteNac)})</span>` : ''}</span>
-                <button onclick="alternarPagamento('${p.id}', 'pagoFreteNac')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoFreteNac ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoFreteNac ? 'Pago' : 'Pendente'}</button>
-              </div>` : '';
-
-            let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
-            let statusEnvioBadge = statusObj ? `<div class="mt-2 text-xs font-bold px-2.5 py-1 rounded-lg border inline-block ${statusObj.cor}">🚚 ${esc(statusObj.nome)}</div>` : '';
-
-            return `
-              <article class="bg-white rounded-3xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
-                <div>
-                  <div class="aspect-[3/4] relative bg-violet-50">
-                    ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
-                  </div>
-                  <div class="p-3">
-                    <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
-                    <div class="mt-2 flex items-center justify-between">
-                      <span class="text-xs text-slate-600">Card: ${brl(precoCard)}</span>
-                      ${badgeCard}
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-dashed border-violet-100 text-xs space-y-1.5 flex flex-col items-start w-full">
-                      ${badgeFInter}${badgeTRf}${badgeFNac}
-                    </div>
-                    ${statusEnvioBadge}
-                    <div class="mt-3 pt-2 border-t border-violet-100 text-base font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
-                  </div>
-                </div>
-              </article>
-            `;
-          }).join("")}</div>`;
-        } else {
-          conteudoCaixaHtml = `<div class="space-y-2 p-4 bg-violet-50/30">${listaItens.map(p => {
-            const precoCard = Number(p.preco) || 0;
-            const fInter = Number(p.freteInter) || 0;
-            const tRf = Number(p.taxaRf) || 0;
-            const fNac = Number(p.freteNac) || 0;
-            const totalItem = precoCard + fInter + tRf + fNac;
-
-            const badgeCard = `<button onclick="alternarPagamento('${p.id}', 'pagoCard')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoCard ? 'Pago' : 'Pendente'}</button>`;
-            let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
-            let statusEnvioBadge = statusObj ? `<span class="ml-2 text-xs font-bold px-2 py-0.5 rounded border ${statusObj.cor}">🚚 ${esc(statusObj.nome)}</span>` : '';
-
-            return `
-              <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                  <div class="w-12 h-16 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
-                    ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <h3 class="font-bold text-sm text-slate-800">${esc(p.nome)}</h3>
-                      ${badgeCard}
-                      ${statusObj ? statusEnvioBadge : ''}
-                    </div>
-                    <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
-                  </div>
-                </div>
-              </article>
-            `;
-          }).join("")}</div>`;
-        }
-      }
-
-      htmlCaixas += `
-        <div class="bg-white rounded-3xl shadow-md shadow-violet-100 border border-violet-100 overflow-hidden mb-4">
-          <button onclick="toggleCaixa('${esc(caixaNome)}')" class="w-full px-5 py-4 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
-            <div class="flex items-center gap-2.5">
-              <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
-              <span class="font-bold text-base text-violet-800">${esc(caixaNome)}</span>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
-            </div>
-            <i data-lucide="chevron-down" class="w-5 h-5 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
-          </button>
-          ${conteudoCaixaHtml}
-        </div>
-      `;
-    }
-    $("containerAreaCliente").innerHTML = htmlCaixas;
   }
+
+  let caixasMap = {};
+  meusPCs.forEach(p => {
+    const caixaNome = p.local || "Geral";
+    if (!caixasMap[caixaNome]) caixasMap[caixaNome] = [];
+    caixasMap[caixaNome].push(p);
+  });
+
+  let htmlCaixas = botaoComprovanteHtml;
+  for (let caixaNome in caixasMap) {
+    const listaItens = caixasMap[caixaNome];
+    const qtd = listaItens.length;
+    const aberta = caixasExpandidas[caixaNome] !== false;
+
+    let conteudoCaixaHtml = "";
+    if (aberta) {
+      if (layoutAtual === 'grid') {
+        conteudoCaixaHtml = `<div class="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-violet-50/30">${listaItens.map(p => {
+          const precoCard = Number(p.preco) || 0;
+          const totalItem = precoCard + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
+          
+          const badgeCard = selo(p.pagoCard);
+          let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+          let statusEnvioBadge = statusObj ? `<div class="mt-1 text-[11px] font-bold px-2 py-0.5 rounded border inline-block ${statusObj.cor}">${esc(statusObj.nome)}</div>` : '';
+
+          let podeMarcarChegado = p.pagoFreteNac && p.statusEnvioId === 'indo_casa';
+          let botaoChegouCliente = podeMarcarChegado ? `
+            <div class="mt-2">
+              <button onclick="marcarChegadoCliente('${p.id}')" class="w-full py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] shadow-sm transition flex items-center justify-center gap-1">
+                <i data-lucide="package-check" class="w-3.5 h-3.5"></i> Chegou!
+              </button>
+            </div>
+          ` : '';
+
+          return `
+            <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
+              <div>
+                <div class="aspect-[3/4] relative bg-violet-50">
+                  ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-3xl text-violet-300">🎴</div>`}
+                </div>
+                <div class="p-2.5">
+                  <h3 class="font-bold text-xs leading-tight">${esc(p.nome)}</h3>
+                  <div class="mt-1 flex items-center justify-between">
+                    <span class="text-[11px] text-slate-600">Card: ${brl(precoCard)}</span>
+                    ${badgeCard}
+                  </div>
+                  ${statusEnvioBadge}
+                  ${botaoChegouCliente}
+                  <div class="mt-2 pt-1.5 border-t border-violet-100 text-xs font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("")}</div>`;
+      } else {
+        conteudoCaixaHtml = `<div class="space-y-2 p-3 bg-violet-50/30">${listaItens.map(p => {
+          const totalItem = (Number(p.preco) || 0) + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
+          const badgeCard = selo(p.pagoCard);
+          let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+          let statusEnvioBadge = statusObj ? `<span class="ml-2 text-[11px] font-bold px-2 py-0.5 rounded border ${statusObj.cor}">${esc(statusObj.nome)}</span>` : '';
+
+          let podeMarcarChegado = p.pagoFreteNac && p.statusEnvioId === 'indo_casa';
+          let botaoChegouCliente = podeMarcarChegado ? `
+            <button onclick="marcarChegadoCliente('${p.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-sm transition flex items-center gap-1 shrink-0">
+              <i data-lucide="package-check" class="w-3.5 h-3.5"></i> Chegou!
+            </button>
+          ` : '';
+
+          return `
+            <article class="bg-white rounded-xl shadow-sm border border-violet-100 p-2.5 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-14 rounded-lg overflow-hidden bg-violet-50 shrink-0 relative">
+                  ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-base text-violet-300">🎴</div>`}
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <h3 class="font-bold text-xs text-slate-800">${esc(p.nome)}</h3>
+                    ${badgeCard}
+                    ${statusObj ? statusEnvioBadge : ''}
+                  </div>
+                  <p class="text-xs font-bold text-violet-600 mt-0.5">${brl(totalItem)}</p>
+                </div>
+              </div>
+              ${botaoChegouCliente}
+            </article>
+          `;
+        }).join("")}</div>`;
+      }
+    }
+
+    htmlCaixas += `
+      <div class="bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden mb-3">
+        <button onclick="toggleCaixa('${esc(caixaNome)}')" class="w-full px-4 py-3 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
+          <div class="flex items-center gap-2">
+            <i data-lucide="package" class="w-4 h-4 text-violet-600"></i>
+            <span class="font-bold text-xs text-violet-800">${esc(caixaNome)}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
+          </div>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
+        </button>
+        ${conteudoCaixaHtml}
+      </div>
+    `;
+  }
+  $("containerAreaCliente").innerHTML = htmlCaixas;
   lucide.createIcons();
 }
 
@@ -1717,7 +2365,7 @@ function show(id) {
 if (LOJA.logoUrl) {
   $("logoContainer").innerHTML = `<img src="${esc(LOJA.logoUrl)}" alt="${esc(LOJA.nome)}" class="w-full h-auto object-contain drop-shadow-sm">`;
 } else {
-  $("logoContainer").innerHTML = `<h1 class="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-violet-500 to-sky-500 bg-clip-text text-transparent">${esc(LOJA.nome)}</h1>`;
+  $("logoContainer").innerHTML = `<h1 class="text-3xl sm:text-4xl font-extrabold text-violet-600 drop-shadow-sm">${esc(LOJA.nome)}</h1>`;
 }
 
 $("ano").textContent = new Date().getFullYear();

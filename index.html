@@ -16,7 +16,7 @@
 <body class="min-h-screen bg-gradient-to-br from-violet-50 via-white to-sky-50 text-slate-700">
 
 <!-- =====================================================
-     🔥 CONFIGURAÇÃO DO FIREBASE (COM SUAS CHAVES)
+     🔥 CONFIGURAÇÃO DO FIREBASE
      ===================================================== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -34,7 +34,6 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // Expondo as funções para o escopo global do site
   window.db = db;
   window.colEstoque = collection(db, "estoque");
   window.colJoiners = collection(db, "joiners");
@@ -45,7 +44,6 @@
   window.collection = collection;
   window.getDocs = getDocs;
 
-  // Iniciar carregamento em tempo real assim que o Firebase conectar
   window.iniciarSincronizacaoRealtime();
 </script>
 
@@ -60,28 +58,34 @@ const LOJA = {
 let ESTOQUE_GERAL = [];
 let JOINERS = {};
 
-// Sincronização em tempo real com o Firebase
 function iniciarSincronizacaoRealtime() {
   if (!window.db) return;
 
-  // Ouvir mudanças no Estoque
+  // Sincronização em tempo real do Estoque
   window.onSnapshot(window.colEstoque, (snapshot) => {
     ESTOQUE_GERAL = [];
     snapshot.forEach((doc) => {
       ESTOQUE_GERAL.push({ id: doc.id, ...doc.data() });
     });
     renderVitrineDisponiveis();
-    if (document.getElementById('admin').classList.contains('fade') === false && !document.getElementById('admin').classList.contains('hidden')) {
+    
+    // Se estiver no painel admin, atualiza a tabela automaticamente sem perder a sessão!
+    const adminSec = document.getElementById('admin');
+    if (adminSec && !adminSec.classList.contains('hidden')) {
       renderTabelaAdmin();
     }
   });
 
-  // Ouvir mudanças nas Clientes
+  // Sincronização em tempo real das Clientes
   window.onSnapshot(window.colJoiners, (snapshot) => {
     JOINERS = {};
     snapshot.forEach((doc) => {
       JOINERS[doc.id] = doc.data();
     });
+    const adminSec = document.getElementById('admin');
+    if (adminSec && !adminSec.classList.contains('hidden')) {
+      renderTabelaAdmin();
+    }
   });
 }
 </script>
@@ -95,7 +99,6 @@ function iniciarSincronizacaoRealtime() {
       <div id="logoContainer" class="max-w-[220px] sm:max-w-[280px] w-full"></div>
     </div>
 
-    <!-- Botão Disponíveis Centralizado -->
     <div class="flex justify-center mt-4">
       <button onclick="show('vitrine')" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-base font-bold text-white bg-gradient-to-r from-violet-400 to-sky-400 shadow-lg shadow-violet-300/60 hover:scale-105 active:scale-95 transition w-60">
         <i data-lucide="heart" class="w-5 h-5"></i> Disponíveis
@@ -117,7 +120,6 @@ function iniciarSincronizacaoRealtime() {
       <p id="erro" class="hidden mt-2 text-sm text-rose-400 text-center">Usuário ou senha incorretos 💜</p>
     </div>
 
-    <!-- Botão Admin Menor e Embaixo de Tudo -->
     <div class="flex justify-center mt-8">
       <button onclick="tentarEntrarAdmin()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-violet-400 hover:text-violet-600 bg-white/50 border border-violet-100 shadow-sm hover:bg-violet-50 transition">
         <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Aiko & Gabs (Admin)
@@ -125,7 +127,7 @@ function iniciarSincronizacaoRealtime() {
     </div>
   </section>
 
-  <!-- VITRINE DE DISPONÍVEIS (Pública) -->
+  <!-- VITRINE DE DISPONÍVEIS -->
   <section id="vitrine" class="hidden fade">
     <button onclick="show('home')" class="back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
     <div class="mb-6">
@@ -226,27 +228,24 @@ function iniciarSincronizacaoRealtime() {
     </div>
   </section>
 
-  <!-- ÁREA DO JOINER (CLIENTE) -->
+  <!-- ÁREA DO JOINER -->
   <section id="joiner" class="hidden fade">
     <button onclick="show('home')" class="back"><i data-lucide="log-out" class="w-4 h-4"></i> Sair</button>
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h2 class="text-3xl font-bold text-violet-600">Olá, <span id="nomeJoiner"></span>! 💜</h2>
       
-      <!-- Controles de Layout (Grade / Lista) -->
       <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
         <button onclick="mudarLayout('grid')" id="btnLayoutGrid" class="p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="layout-grid" class="w-4 h-4"></i> Grade</button>
         <button onclick="mudarLayout('list')" id="btnLayoutList" class="p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="list" class="w-4 h-4"></i> Lista</button>
       </div>
     </div>
 
-    <!-- Abas e Filtros -->
     <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
       <div class="flex gap-2 bg-white/70 p-1.5 rounded-full border border-violet-100 w-full sm:w-fit">
         <button id="tab1" onclick="tab(1)" class="tabbtn flex-1 sm:flex-none">Disponíveis da Loja</button>
         <button id="tab2" onclick="tab(2)" class="tabbtn flex-1 sm:flex-none">Meus Itens Comprados</button>
       </div>
       
-      <!-- Caixa de Pesquisa -->
       <div class="w-full sm:w-72">
         <input id="inputBusca" oninput="atualizarFiltroJoiner()" placeholder="🔍 Pesquisar photocard ou caixa..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
       </div>
@@ -260,7 +259,7 @@ function iniciarSincronizacaoRealtime() {
   </footer>
 </main>
 
-<!-- MODAL DE LISTA DE TODAS AS CLIENTES -->
+<!-- MODAL DE LISTA DE CLIENTES -->
 <div id="modalListaClientes" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
@@ -271,7 +270,7 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE SELEÇÃO DE STATUS / CLIENTE COM PESQUISA -->
+<!-- MODAL DE STATUS -->
 <div id="modalStatus" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
@@ -279,7 +278,6 @@ function iniciarSincronizacaoRealtime() {
       <button onclick="fecharModalStatus()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
 
-    <!-- Ações Rápidas -->
     <div class="grid grid-cols-2 gap-2 mb-4">
       <button onclick="alterarStatusModal('standby')" class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
         <i data-lucide="clock" class="w-4 h-4"></i> Standby (Oculto)
@@ -289,18 +287,16 @@ function iniciarSincronizacaoRealtime() {
       </button>
     </div>
 
-    <!-- Campo de Pesquisa de Cliente -->
     <div class="mb-3">
       <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Cliente:</label>
-      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da cliente..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da cliente..." class="w-full px-4 py-2.5 rounded-2xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
     </div>
 
-    <!-- Lista Filtrável de Clientes -->
     <div id="listaClientesModal" class="max-h-56 overflow-y-auto space-y-1 pr-1 divide-y divide-violet-50"></div>
   </div>
 </div>
 
-<!-- MODAL DE ZOOM DE FOTO -->
+<!-- MODAL DE ZOOM -->
 <div id="modalZoom" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50" onclick="fecharZoom()">
   <div class="relative max-w-xl w-full max-h-[90vh] flex items-center justify-center" onclick="event.stopPropagation()">
     <button onclick="fecharZoom()" class="absolute -top-12 right-0 text-white font-bold text-2xl hover:text-violet-300 transition">✕ Fechar</button>
@@ -473,9 +469,6 @@ async function excluirPC(id) {
   }
 }
 
-// =====================================================
-// MODAL DE LISTA DE TODAS AS CLIENTES
-// =====================================================
 function abrirModalClientes() {
   const clientesKeys = Object.keys(JOINERS);
   $("totalClientesCount").textContent = clientesKeys.length;
@@ -507,9 +500,6 @@ function fecharModalClientes() {
   $("modalListaClientes").classList.add("hidden");
 }
 
-// =====================================================
-// MODAL DE PESQUISA DE STATUS / CLIENTE
-// =====================================================
 function abrirModalStatus(id) {
   cardEditandoId = id;
   $("inputFiltroCliente").value = "";

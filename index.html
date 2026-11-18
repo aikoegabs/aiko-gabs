@@ -37,6 +37,7 @@
   window.db = db;
   window.colEstoque = collection(db, "estoque");
   window.colJoiners = collection(db, "joiners");
+  window.colConfig = collection(db, "configuracoes");
   window.setDoc = setDoc;
   window.doc = doc;
   window.deleteDoc = deleteDoc;
@@ -57,6 +58,26 @@ const LOJA = {
 
 let ESTOQUE_GERAL = [];
 let JOINERS = {};
+let STATUS_PERSONALIZADOS = [
+  { id: "confirmado", nome: "Confirmado", cor: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+  { id: "warehouse", nome: "Warehouse", cor: "bg-sky-100 text-sky-800 border-sky-300" },
+  { id: "indo_warehouse", nome: "Indo para Warehouse", cor: "bg-amber-100 text-amber-800 border-amber-300" },
+  { id: "vindo_brasil", nome: "Vindo pro Brasil", cor: "bg-violet-100 text-violet-800 border-violet-300" }
+];
+
+let ARTISTAS_PERSONALIZADAS = [
+  "Milk Pansawa",
+  "Love Pattranite",
+  "View Benyapa",
+  "Tu Tontawan"
+];
+
+let ITENS_PERSONALIZADOS = [
+  "Special Photocard",
+  "Benefit Card",
+  "Standard Card",
+  "Polaroid"
+];
 
 function iniciarSincronizacaoRealtime() {
   if (!window.db) return;
@@ -82,6 +103,27 @@ function iniciarSincronizacaoRealtime() {
     const adminSec = document.getElementById('admin');
     if (adminSec && !adminSec.classList.contains('hidden')) {
       renderTabelaAdmin();
+    }
+  });
+
+  window.onSnapshot(window.doc(window.db, "configuracoes", "status"), (docSnap) => {
+    if (docSnap.exists() && docSnap.data().lista) {
+      STATUS_PERSONALIZADOS = docSnap.data().lista;
+      renderizarGerenciadorStatus();
+    }
+  });
+
+  window.onSnapshot(window.doc(window.db, "configuracoes", "artistas"), (docSnap) => {
+    if (docSnap.exists() && docSnap.data().lista) {
+      ARTISTAS_PERSONALIZADAS = docSnap.data().lista;
+      renderizarGerenciadorArtistas();
+    }
+  });
+
+  window.onSnapshot(window.doc(window.db, "configuracoes", "itens"), (docSnap) => {
+    if (docSnap.exists() && docSnap.data().lista) {
+      ITENS_PERSONALIZADOS = docSnap.data().lista;
+      renderizarGerenciadorItens();
     }
   });
 }
@@ -126,27 +168,120 @@ function iniciarSincronizacaoRealtime() {
 
   <!-- VITRINE DE DISPONÍVEIS -->
   <section id="vitrine" class="hidden fade">
-    <button onclick="show('home')" class="back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
-    <div class="mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
+      
+      <!-- Layout Grid / Lista na Vitrine -->
+      <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
+        <button onclick="mudarLayoutVitrine('grid')" id="btnVitrineGrid" class="p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="layout-grid" class="w-4 h-4"></i> Grade</button>
+        <button onclick="mudarLayoutVitrine('list')" id="btnVitrineList" class="p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="list" class="w-4 h-4"></i> Lista</button>
+      </div>
+    </div>
+
+    <div class="mb-4">
       <h2 class="text-3xl font-bold text-violet-600 mb-1">Disponíveis</h2>
       <p class="text-slate-500">Itens disponíveis para compra.</p>
     </div>
-    <div id="gridDisponiveis" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+
+    <!-- Barra de Filtros e Ordenação Completa -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      
+      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div class="w-full sm:w-64">
+          <input id="inputBuscaVitrine" oninput="renderVitrineDisponiveis()" placeholder="🔍 Pesquisar photocard..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+        </div>
+        
+        <!-- Botão de Filtro -->
+        <div class="relative">
+          <button onclick="toggleDropdownFiltroExcel()" class="px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm font-bold text-violet-700 hover:bg-violet-50 shadow-sm flex items-center gap-2">
+            <i data-lucide="filter" class="w-4 h-4 text-violet-500"></i> Filtros <span id="contadorFiltrosExcel" class="bg-violet-100 text-violet-600 text-xs px-2 py-0.5 rounded-full">Ativos</span>
+          </button>
+
+          <!-- Dropdown de Filtros Avançado -->
+          <div id="dropdownFiltroExcel" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-violet-100 p-4 z-30 fade max-h-[80vh] overflow-y-auto">
+            
+            <!-- Seção Artista -->
+            <div class="mb-4 pb-3 border-b border-violet-100">
+              <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                <span>Atriz / Artista</span>
+                <button onclick="marcarTodosExcel('artista', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+              </div>
+              <div class="relative mb-2">
+                <input oninput="filtrarSubgrupoExcel('artista', this.value)" placeholder="Pesquisar artista..." class="w-full px-3 py-1.5 rounded-xl bg-violet-50/50 border border-violet-200 text-xs focus:outline-none">
+              </div>
+              <div id="excelArtistasList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
+            </div>
+
+            <!-- Seção Nome do Item -->
+            <div class="mb-4 pb-3 border-b border-violet-100">
+              <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                <span>Nome do Item</span>
+                <button onclick="marcarTodosExcel('item', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+              </div>
+              <div class="relative mb-2">
+                <input oninput="filtrarSubgrupoExcel('item', this.value)" placeholder="Pesquisar item..." class="w-full px-3 py-1.5 rounded-xl bg-violet-50/50 border border-violet-200 text-xs focus:outline-none">
+              </div>
+              <div id="excelItensList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
+            </div>
+
+            <!-- Seção Caixa -->
+            <div class="mb-4 pb-3 border-b border-violet-100">
+              <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                <span>Caixa</span>
+                <button onclick="marcarTodosExcel('caixa', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+              </div>
+              <div class="relative mb-2">
+                <input oninput="filtrarSubgrupoExcel('caixa', this.value)" placeholder="Pesquisar caixa..." class="w-full px-3 py-1.5 rounded-xl bg-violet-50/50 border border-violet-200 text-xs focus:outline-none">
+              </div>
+              <div id="excelCaixasList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
+            </div>
+
+            <!-- Seção Status -->
+            <div class="mb-3">
+              <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                <span>Status</span>
+                <button onclick="marcarTodosExcel('status', true)" class="text-[10px] text-violet-500 hover:underline">Todos</button>
+              </div>
+              <div id="excelStatusList" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs"></div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-violet-100 flex gap-2">
+              <button onclick="aplicarFiltroExcel()" class="flex-1 py-2 rounded-xl bg-violet-500 text-white font-bold text-xs hover:bg-violet-600 transition">Aplicar Filtros</button>
+              <button onclick="fecharDropdownFiltroExcel()" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200 transition">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seletor de Ordenação (Preço / A-Z) -->
+      <div class="w-full sm:w-auto">
+        <select id="selectOrdenacaoVitrine" onchange="renderVitrineDisponiveis()" class="px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm font-bold text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+          <option value="padrao">Ordenar por Padrão</option>
+          <option value="preco_crescente">Preço Total: Menor ao Maior</option>
+          <option value="preco_decrescente">Preço Total: Maior ao Menor</option>
+          <option value="az">Ordem Alfabética (A - Z)</option>
+          <option value="za">Ordem Alfabética (Z - A)</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div id="gridDisponiveis"></div>
   </section>
 
   <!-- PAINEL ADMIN -->
   <section id="admin" class="hidden fade">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
       <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Sair do Admin</button>
       <button onclick="abrirModalClientes()" class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-violet-100 text-violet-700 text-xs font-bold hover:bg-violet-200 transition shadow-sm">
-        <i data-lucide="users" class="w-4 h-4"></i> Ver Todas as Clientes Cadastradas
+        <i data-lucide="users" class="w-4 h-4"></i> Clientes Cadastradas
       </button>
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="text-3xl font-bold text-violet-600">Painel Privativo · Aiko & Gabs 💜</h2>
-        <p class="text-slate-500 text-sm">Cadastre photocards, clientes e organize caixas, lotes e taxas.</p>
+        <p class="text-slate-500 text-sm">Cadastre photocards, clientes e gerencie o estoque.</p>
       </div>
     </div>
 
@@ -156,29 +291,116 @@ function iniciarSincronizacaoRealtime() {
       <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
         <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5"></i> Cadastrar Novo Photocard</h3>
         <div class="space-y-3">
-          <div>
-            <label class="text-xs font-bold text-slate-500">Nome do Item / Photocard</label>
-            <input id="pcNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          
+          <!-- Atriz / Artista Pesquisável -->
+          <div class="relative">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Atriz / Artista</label>
+              <button onclick="abrirModalArtistasConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Artistas
+              </button>
+            </div>
+            <input id="inputBuscaArtistaAdmin" placeholder="🔍 Pesquisar ou selecionar artista..." autocomplete="off" onfocus="abrirDropdownAdmin('Artista')" oninput="filtrarDropdownAdmin('Artista', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input type="hidden" id="pcAtrizSelecionada">
+            <div id="dropdownArtistaAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
           </div>
+
+          <!-- Nome do Item Pesquisável -->
+          <div class="relative">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Nome do Item</label>
+              <button onclick="abrirModalItensConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Itens
+              </button>
+            </div>
+            <input id="inputBuscaItemAdmin" placeholder="🔍 Pesquisar ou selecionar item..." autocomplete="off" onfocus="abrirDropdownAdmin('Item')" oninput="filtrarDropdownAdmin('Item', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input type="hidden" id="pcItemSelecionado">
+            <div id="dropdownItemAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
+          </div>
+
+          <!-- Preço e Caixa Alinhados Perfeitamente -->
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-xs font-bold text-slate-500">Preço (R$)</label>
-              <input id="pcPreco" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-bold text-slate-500">Preço (R$)</label>
+                <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
+                  <input type="checkbox" id="pcPagoCardCheck" class="rounded accent-violet-600 w-3.5 h-3.5"> Pago
+                </label>
+              </div>
+              <input id="pcPreco" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
             </div>
             <div>
-              <label class="text-xs font-bold text-slate-500">Caixa / Lote</label>
-              <input id="pcLocal" value="Caixa Thai" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+              <label class="text-xs font-bold text-slate-500 block mb-1">Caixa</label>
+              <input id="pcLocal" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
             </div>
           </div>
-          
-          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-violet-100">
-            <div>
-              <label class="text-xs font-bold text-slate-500">Frete Inter (Opcional)</label>
-              <input id="pcFrete" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+
+          <!-- Status Inicial Pesquisável -->
+          <div class="relative">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Status Inicial</label>
+              <button onclick="abrirModalStatusConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Status
+              </button>
             </div>
-            <div>
-              <label class="text-xs font-bold text-slate-500">Taxa RF (Opcional)</label>
-              <input id="pcTaxaRf" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            <input id="inputBuscaStatusAdmin" placeholder="🔍 Pesquisar ou selecionar status..." autocomplete="off" onfocus="abrirDropdownAdmin('Status')" oninput="filtrarDropdownAdmin('Status', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input type="hidden" id="pcStatusSelecionado">
+            <div id="dropdownStatusAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
+          </div>
+
+          <!-- TAXAS E DATAS LIMITES INICIAIS -->
+          <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-2.5">
+            <span class="text-[11px] font-bold text-violet-700 block">Fretes & Taxas Iniciais (opcional)</span>
+            
+            <!-- Linha 1: Frete Inter -->
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <label class="text-[10px] font-bold text-slate-600">Frete Inter (R$)</label>
+                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="pcPagoFreteInterCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+                  </label>
+                </div>
+                <input id="pcFreteInter" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Frete Inter</label>
+                <input id="pcDataFreteInter" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+            </div>
+
+            <!-- Linha 2: Taxa RF -->
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <label class="text-[10px] font-bold text-slate-600">Taxa RF (R$)</label>
+                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="pcPagoTaxaRfCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+                  </label>
+                </div>
+                <input id="pcTaxaRf" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Taxa RF</label>
+                <input id="pcDataTaxaRf" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+            </div>
+
+            <!-- Linha 3: Frete Nacional -->
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <label class="text-[10px] font-bold text-slate-600">Frete Nacional (R$)</label>
+                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="pcPagoFreteNacCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+                  </label>
+                </div>
+                <input id="pcFreteNac" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Frete Nac</label>
+                <input id="pcDataFreteNac" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
             </div>
           </div>
 
@@ -217,9 +439,14 @@ function iniciarSincronizacaoRealtime() {
 
     </div>
 
-    <!-- Tabela de Gerenciamento de Estoque por Caixas -->
+    <!-- Tabela de Gerenciamento de Estoque por Caixas com Filtro -->
     <div class="space-y-4">
-      <h3 class="font-bold text-xl text-violet-700 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5"></i> Gerenciamento de Estoque por Caixas</h3>
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h3 class="font-bold text-xl text-violet-700 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5"></i> Gerenciamento de Estoque por Caixas</h3>
+        <div class="w-full sm:w-72">
+          <input id="inputBuscaAdmin" oninput="renderTabelaAdmin()" placeholder="🔍 Filtrar por atriz, item ou caixa..." class="w-full px-4 py-2 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+        </div>
+      </div>
       <div id="containerTabelaAdmin"></div>
     </div>
   </section>
@@ -255,6 +482,133 @@ function iniciarSincronizacaoRealtime() {
   </footer>
 </main>
 
+<!-- MODAL DE CONFIGURAÇÃO DE STATUS -->
+<div id="modalStatusConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="tags" class="w-5 h-5"></i> Personalizar Status</h3>
+      <button onclick="fecharModalStatusConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    
+    <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaStatusConfigs"></div>
+
+    <div class="space-y-2 pt-2 border-t border-violet-100">
+      <input id="novoStatusNome" placeholder="Nome do Status" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+      <select id="novoStatusCor" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+        <option value="bg-emerald-100 text-emerald-800 border-emerald-300">Verde</option>
+        <option value="bg-sky-100 text-sky-800 border-sky-300">Azul</option>
+        <option value="bg-amber-100 text-amber-800 border-amber-300">Amarelo</option>
+        <option value="bg-violet-100 text-violet-800 border-violet-300">Roxo</option>
+        <option value="bg-rose-100 text-rose-800 border-rose-300">Rosa/Vermelho</option>
+      </select>
+      <button onclick="adicionarStatusPersonalizado()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Status</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE CONFIGURAÇÃO DE ARTISTAS -->
+<div id="modalArtistasConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5"></i> Personalizar Atrizes / Artistas</h3>
+      <button onclick="fecharModalArtistasConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    
+    <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaArtistasConfigs"></div>
+
+    <div class="space-y-2 pt-2 border-t border-violet-100">
+      <input id="novaArtistasNome" placeholder="Nome da Atriz / Artista" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+      <button onclick="adicionarArtistaPersonalizada()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Artista</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE CONFIGURAÇÃO DE ITENS -->
+<div id="modalItensConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5"></i> Personalizar Nomes de Itens</h3>
+      <button onclick="fecharModalItensConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    
+    <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaItensConfigs"></div>
+
+    <div class="space-y-2 pt-2 border-t border-violet-100">
+      <input id="novoItemNomeInput" placeholder="Nome do Item" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+      <button onclick="adicionarItemPersonalizado()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO COMPLETA DO CARD -->
+<div id="modalEditarCard" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5"></i> Editar Photocard & Taxas</h3>
+      <button onclick="fecharModalEditar()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+
+    <input type="hidden" id="editCardId">
+
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-bold text-slate-500">Nome do Photocard</label>
+        <input id="editNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs font-bold text-slate-500">Preço do Card (R$)</label>
+          <input id="editPreco" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500">Caixa</label>
+          <input id="editLocal" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+        </div>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-bold text-slate-600">Frete Inter (R$)</label>
+            <input id="editFreteInter" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600">Prazo Frete Inter</label>
+            <input id="editDataFreteInter" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-bold text-slate-600">Taxa RF (R$)</label>
+            <input id="editTaxaRf" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600">Prazo Taxa RF</label>
+            <input id="editDataTaxaRf" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-bold text-slate-600">Frete Nacional (R$)</label>
+            <input id="editFreteNac" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600">Prazo Frete Nac</label>
+            <input id="editDataFreteNac" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs mt-0.5">
+          </div>
+        </div>
+      </div>
+
+      <button onclick="salvarEdicaoCard()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition mt-2">
+        Salvar Alterações
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DE LISTA DE CLIENTES -->
 <div id="modalListaClientes" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-violet-100 fade">
@@ -266,11 +620,41 @@ function iniciarSincronizacaoRealtime() {
   </div>
 </div>
 
-<!-- MODAL DE STATUS -->
+<!-- MODAL DE EDITAR CLIENTE -->
+<div id="modalEditarCliente" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-60">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="user-pen" class="w-5 h-5"></i> Editar Cliente</h3>
+      <button onclick="fecharModalEditarCliente()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+
+    <input type="hidden" id="editClientKeyOriginal">
+
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-bold text-slate-500">Usuário (@)</label>
+        <input id="editClientUser" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-500">Nome Completo</label>
+        <input id="editClientName" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-500">Senha</label>
+        <input id="editClientPass" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+      </div>
+      <button onclick="salvarEdicaoCliente()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition mt-2">
+        Salvar Alterações
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE STATUS (JOINER / DISPONÍVEL) -->
 <div id="modalStatus" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
   <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="user-check" class="w-5 h-5"></i> Alterar Status / Destino</h3>
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="user-check" class="w-5 h-5"></i> Joiner / Disponível</h3>
       <button onclick="fecharModalStatus()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
     </div>
 
@@ -284,22 +668,11 @@ function iniciarSincronizacaoRealtime() {
     </div>
 
     <div class="mb-3">
-      <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Cliente:</label>
-      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da cliente..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+      <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Joiner:</label>
+      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da joiner..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
     </div>
 
     <div id="listaClientesModal" class="max-h-56 overflow-y-auto space-y-1 pr-1 divide-y divide-violet-50"></div>
-  </div>
-</div>
-
-<!-- MODAL DE DETALHES DO PRODUTO (POPUP ESTILO SHOPEE) -->
-<div id="modalDetalhesCard" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50" onclick="fecharModalDetalhes()">
-  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-violet-100 fade relative" onclick="event.stopPropagation()">
-    <button onclick="fecharModalDetalhes()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl z-10">✕</button>
-    
-    <div id="conteudoModalDetalhes" class="flex flex-col items-center">
-      <!-- Inserido via JavaScript -->
-    </div>
   </div>
 </div>
 
@@ -316,7 +689,8 @@ function iniciarSincronizacaoRealtime() {
   .back:hover { color:#0ea5e9; }
   .tabbtn { padding:.6rem 1.2rem; border-radius:9999px; font-weight:700; font-size:.9rem; color:#8b5cf6; transition:.2s; }
   .tabbtn.on { background:linear-gradient(90deg,#a78bfa,#7dd3fc); color:#fff; box-shadow:0 4px 12px #c4b5fd80; }
-  .upload-btn { position:absolute; bottom:6px; right:6px; background:rgba(255,255,255,0.9); backdrop-filter:blur(4px); padding:3px 7px; border-radius:9999px; font-size:10px; font-weight:bold; color:#8b5cf6; cursor:pointer; z-index:10; display:flex; align-items:center; gap:2px; }
+  
+  .upload-btn { position:absolute; bottom:2px; left:2px; background:rgba(255,255,255,0.95); backdrop-filter:blur(4px); width:20px; height:20px; border-radius:6px; font-size:10px; font-weight:bold; color:#8b5cf6; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.15); border:1px solid #ddd6fe; }
   .upload-btn:hover { background:#8b5cf6; color:#fff; }
   .zoomable { cursor: pointer; transition: transform 0.2s; }
   .zoomable:hover { transform: scale(1.02); }
@@ -329,6 +703,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">
 
 let clienteAtualKey = "";
 let layoutAtual = "grid"; 
+let layoutVitrineAtual = "grid";
+let filtrosExcelState = { artista: {}, item: {}, caixa: {}, status: {} };
 let abaAtualJoiner = 1;
 let caixasExpandidas = {}; 
 let caixasAdminExpandidas = {}; 
@@ -339,6 +715,9 @@ function tentarEntrarAdmin() {
   if (senhaMestra === "aikogabs2026") {
     show('admin');
     renderTabelaAdmin();
+    renderizarGerenciadorStatus();
+    renderizarGerenciadorArtistas();
+    renderizarGerenciadorItens();
   } else if (senhaMestra !== null) {
     alert("Senha incorreta! 💜");
   }
@@ -355,49 +734,156 @@ function fecharZoom() {
   $("imgZoom").src = "";
 }
 
-function copiarLinkCard(id) {
-  const linkGerado = window.location.href.split('#')[0] + "#card=" + id;
-  navigator.clipboard.writeText(linkGerado).then(() => {
-    alert("Link do card copiado para a área de transferência! 💜");
-  }).catch(() => {
-    prompt("Copie o link abaixo:", linkGerado);
+function abrirModalStatusConfig() {
+  renderizarGerenciadorStatus();
+  $("modalStatusConfig").classList.remove("hidden");
+}
+function fecharModalStatusConfig() { $("modalStatusConfig").classList.add("hidden"); }
+
+function abrirModalArtistasConfig() {
+  renderizarGerenciadorArtistas();
+  $("modalArtistasConfig").classList.remove("hidden");
+}
+function fecharModalArtistasConfig() { $("modalArtistasConfig").classList.add("hidden"); }
+
+function abrirModalItensConfig() {
+  renderizarGerenciadorItens();
+  $("modalItensConfig").classList.remove("hidden");
+}
+function fecharModalItensConfig() { $("modalItensConfig").classList.add("hidden"); }
+
+function renderizarGerenciadorStatus() {
+  let html = "";
+  STATUS_PERSONALIZADOS.forEach((s, idx) => {
+    html += `<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border ${s.cor} text-xs font-bold"><span>${esc(s.nome)}</span><button onclick="removerStatusPersonalizado(${idx})" class="hover:opacity-75">✕</button></div>`;
   });
+  $("listaStatusConfigs").innerHTML = html || `<span class="text-xs text-slate-400">Nenhum status criado.</span>`;
 }
 
-function abrirModalDetalhesPorId(id) {
-  const p = ESTOQUE_GERAL.find(x => x.id === id);
-  if (!p) return;
-
-  $("conteudoModalDetalhes").innerHTML = `
-    <div class="w-full aspect-[3/4] rounded-2xl overflow-hidden bg-violet-50 relative mb-4 shadow-inner">
-      ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
-    </div>
-    <span class="text-[10px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full mb-2">${esc(p.local)}</span>
-    <h3 class="font-bold text-base text-slate-800 text-center leading-snug mb-1">${esc(p.nome)}</h3>
-    <p class="text-xl font-extrabold text-violet-600 mb-4">${brl(p.preco)}</p>
-    
-    <div class="w-full space-y-2">
-      <button onclick="copiarLinkCard('${p.id}')" class="w-full py-2.5 rounded-2xl bg-violet-100 hover:bg-violet-200 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
-        <i data-lucide="copy" class="w-4 h-4"></i> Copiar Link do Card
-      </button>
-      <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md transition">
-        <i data-lucide="message-circle" class="w-5 h-5"></i> Comprar via WhatsApp
-      </a>
-    </div>
-  `;
-  $("modalDetalhesCard").classList.remove("hidden");
-  lucide.createIcons();
+function renderizarGerenciadorArtistas() {
+  let html = "";
+  ARTISTAS_PERSONALIZADAS.forEach((artista, idx) => {
+    html += `<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-violet-200 bg-violet-50 text-violet-800 text-xs font-bold"><span>${esc(artista)}</span><button onclick="removerArtistaPersonalizada(${idx})" class="hover:opacity-75 text-rose-500 font-bold">✕</button></div>`;
+  });
+  $("listaArtistasConfigs").innerHTML = html || `<span class="text-xs text-slate-400">Nenhuma artista cadastrada.</span>`;
 }
 
-function fecharModalDetalhes() {
-  $("modalDetalhesCard").classList.add("hidden");
+function renderizarGerenciadorItens() {
+  let html = "";
+  ITENS_PERSONALIZADOS.forEach((item, idx) => {
+    html += `<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-violet-200 bg-violet-50 text-violet-800 text-xs font-bold"><span>${esc(item)}</span><button onclick="removerItemPersonalizado(${idx})" class="hover:opacity-75 text-rose-500 font-bold">✕</button></div>`;
+  });
+  $("listaItensConfigs").innerHTML = html || `<span class="text-xs text-slate-400">Nenhum item cadastrado.</span>`;
+}
+
+function abrirDropdownAdmin(tipo) {
+  const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : 'dropdownStatusAdmin';
+  $(dropId).classList.remove('hidden');
+  filtrarDropdownAdmin(tipo, '');
+}
+
+function filtrarDropdownAdmin(tipo, termo) {
+  const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : 'dropdownStatusAdmin';
+  let lista = tipo === 'Artista' ? ARTISTAS_PERSONALIZADAS : tipo === 'Item' ? ITENS_PERSONALIZADOS : STATUS_PERSONALIZADOS.map(s => s.nome);
+
+  if (termo) lista = lista.filter(x => x.toLowerCase().includes(termo.toLowerCase()));
+
+  let html = "";
+  if (!lista.length) {
+    html = `<div class="p-2 text-xs text-slate-400 text-center">Nenhum resultado encontrado</div>`;
+  } else {
+    lista.forEach(val => {
+      html += `<div onclick="selecionarOpcaoAdmin('${tipo}', '${esc(val)}')" class="px-3 py-2 text-xs font-bold text-slate-700 hover:bg-violet-50 rounded-lg cursor-pointer transition">${esc(val)}</div>`;
+    });
+  }
+  $(dropId).innerHTML = html;
+  $(dropId).classList.remove('hidden');
+}
+
+function selecionarOpcaoAdmin(tipo, valor) {
+  if (tipo === 'Artista') {
+    $("inputBuscaArtistaAdmin").value = valor;
+    $("pcAtrizSelecionada").value = valor;
+    $("dropdownArtistaAdmin").classList.add('hidden');
+  } else if (tipo === 'Item') {
+    $("inputBuscaItemAdmin").value = valor;
+    $("pcItemSelecionado").value = valor;
+    $("dropdownItemAdmin").classList.add('hidden');
+  } else if (tipo === 'Status') {
+    $("inputBuscaStatusAdmin").value = valor;
+    let stObj = STATUS_PERSONALIZADOS.find(s => s.nome === valor);
+    $("pcStatusSelecionado").value = stObj ? stObj.id : "";
+    $("dropdownStatusAdmin").classList.add('hidden');
+  }
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#inputBuscaArtistaAdmin') && !e.target.closest('#dropdownArtistaAdmin')) {
+    if ($("dropdownArtistaAdmin")) $("dropdownArtistaAdmin").classList.add('hidden');
+  }
+  if (!e.target.closest('#inputBuscaItemAdmin') && !e.target.closest('#dropdownItemAdmin')) {
+    if ($("dropdownItemAdmin")) $("dropdownItemAdmin").classList.add('hidden');
+  }
+  if (!e.target.closest('#inputBuscaStatusAdmin') && !e.target.closest('#dropdownStatusAdmin')) {
+    if ($("dropdownStatusAdmin")) $("dropdownStatusAdmin").classList.add('hidden');
+  }
+});
+
+async function adicionarStatusPersonalizado() {
+  const nome = $("novoStatusNome").value.trim();
+  const cor = $("novoStatusCor").value;
+  if (!nome) return alert("Digite o nome do status!");
+  const id = nome.toLowerCase().replace(/[^a-z0-9]/g, "_");
+  if (STATUS_PERSONALIZADOS.some(s => s.id === id)) return alert("Já existe um status com esse nome!");
+  STATUS_PERSONALIZADOS.push({ id, nome, cor });
+  $("novoStatusNome").value = "";
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "status"), { lista: STATUS_PERSONALIZADOS });
+  renderizarGerenciadorStatus();
+}
+
+async function removerStatusPersonalizado(index) {
+  STATUS_PERSONALIZADOS.splice(index, 1);
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "status"), { lista: STATUS_PERSONALIZADOS });
+  renderizarGerenciadorStatus();
+}
+
+async function adicionarArtistaPersonalizada() {
+  const nome = $("novaArtistasNome").value.trim();
+  if (!nome) return alert("Digite o nome da artista!");
+  if (ARTISTAS_PERSONALIZADAS.includes(nome)) return alert("Essa artista já está cadastrada!");
+  ARTISTAS_PERSONALIZADAS.push(nome);
+  $("novaArtistasNome").value = "";
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "artistas"), { lista: ARTISTAS_PERSONALIZADAS });
+  renderizarGerenciadorArtistas();
+}
+
+async function removerArtistaPersonalizada(index) {
+  ARTISTAS_PERSONALIZADAS.splice(index, 1);
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "artistas"), { lista: ARTISTAS_PERSONALIZADAS });
+  renderizarGerenciadorArtistas();
+}
+
+async function adicionarItemPersonalizado() {
+  const nome = $("novoItemNomeInput").value.trim();
+  if (!nome) return alert("Digite o nome do item!");
+  if (ITENS_PERSONALIZADOS.includes(nome)) return alert("Esse item já está cadastrado!");
+  ITENS_PERSONALIZADOS.push(nome);
+  $("novoItemNomeInput").value = "";
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "itens"), { lista: ITENS_PERSONALIZADOS });
+  renderizarGerenciadorItens();
+}
+
+async function removerItemPersonalizado(index) {
+  ITENS_PERSONALIZADOS.splice(index, 1);
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "itens"), { lista: ITENS_PERSONALIZADOS });
+  renderizarGerenciadorItens();
 }
 
 const renderImgBox = (src, id) => `
-  <div class="relative w-full h-full bg-gradient-to-br from-violet-100 to-sky-100 flex items-center justify-center overflow-hidden group">
-    ${src ? `<img src="${esc(src)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(src)}')">` : `<span class="text-3xl text-violet-300">🎴</span>`}
+  <div class="relative w-full h-full bg-violet-50 flex items-center justify-center overflow-hidden group">
+    ${src ? `<img src="${esc(src)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(src)}')">` : `<span class="text-2xl text-violet-300">🎴</span>`}
     <label class="upload-btn" title="Trocar foto">
-      📁 Foto
+      📁
       <input type="file" accept="image/*" class="hidden" onchange="mudarFotoEstoque(event, '${id}')">
     </label>
   </div>
@@ -418,74 +904,124 @@ async function mudarFotoEstoque(event, id) {
 }
 
 function adicionarNovoPCAdmin() {
-  const nome = $("pcNome").value.trim();
-  const preco = parseFloat($("pcPreco").value) || 0;
-  const local = $("pcLocal").value.trim() || "Caixa Thai";
-  const freteInter = parseFloat($("pcFrete").value) || 0;
-  const taxaRf = parseFloat($("pcTaxaRf").value) || 0;
-  const fileInput = $("pcFotoInput");
+  const atriz = $("inputBuscaArtistaAdmin").value.trim();
+  const nomeItem = $("inputBuscaItemAdmin").value.trim();
+  if (!nomeItem) return alert("Selecione ou digite o nome do item!");
+  const nomeCompleto = atriz ? `${atriz} - ${nomeItem}` : nomeItem;
 
-  if (!nome) return alert("Digite o nome do photocard!");
+  const preco = parseFloat($("pcPreco").value) || 0;
+  const pagoCard = $("pcPagoCardCheck").checked;
+  const local = $("pcLocal").value.trim() || "Geral";
+  const statusEnvioId = $("pcStatusSelecionado").value;
+
+  const freteInter = parseFloat($("pcFreteInter").value) || 0;
+  const pagoFreteInter = $("pcPagoFreteInterCheck").checked;
+  const dataFreteInter = $("pcDataFreteInter").value.trim();
+
+  const taxaRf = parseFloat($("pcTaxaRf").value) || 0;
+  const pagoTaxaRf = $("pcPagoTaxaRfCheck").checked;
+  const dataTaxaRf = $("pcDataTaxaRf").value.trim();
+
+  const freteNac = parseFloat($("pcFreteNac").value) || 0;
+  const pagoFreteNac = $("pcPagoFreteNacCheck").checked;
+  const dataFreteNac = $("pcDataFreteNac").value.trim();
+
+  const fileInput = $("pcFotoInput");
 
   if (fileInput.files && fileInput.files[0]) {
     const reader = new FileReader();
     reader.onload = function(e) {
-      salvarNovoItemNoEstoque(nome, preco, local, freteInter, taxaRf, e.target.result);
+      salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, e.target.result);
     };
     reader.readAsDataURL(fileInput.files[0]);
   } else {
-    salvarNovoItemNoEstoque(nome, preco, local, freteInter, taxaRf, "");
+    salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, "");
   }
 }
 
-async function salvarNovoItemNoEstoque(nome, preco, local, freteInter, taxaRf, fotoBase64) {
+async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, fotoBase64) {
   const id = "pc_" + Date.now();
   const novoCard = {
-    id,
-    nome,
-    foto: fotoBase64,
-    preco,
-    status: "standby",
-    local,
-    freteInter,
-    taxaRf
+    id, nome, foto: fotoBase64, preco, status: "standby", local,
+    freteInter, dataFreteInter, taxaRf, dataTaxaRf, freteNac, dataFreteNac,
+    pagoCard, pagoFreteInter, pagoTaxaRf, pagoFreteNac, statusEnvioId
   };
-  
-  if (window.db) {
-    await window.setDoc(window.doc(window.db, "estoque", id), novoCard);
-  }
+  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), novoCard);
 
-  $("pcNome").value = "";
+  $("inputBuscaArtistaAdmin").value = "";
+  $("pcAtrizSelecionada").value = "";
+  $("inputBuscaItemAdmin").value = "";
+  $("pcItemSelecionado").value = "";
   $("pcPreco").value = "";
-  $("pcFrete").value = "";
+  $("pcPagoCardCheck").checked = false;
+  $("pcLocal").value = "";
+  $("inputBuscaStatusAdmin").value = "";
+  $("pcStatusSelecionado").value = "";
+  $("pcFreteInter").value = "";
+  $("pcPagoFreteInterCheck").checked = false;
+  $("pcDataFreteInter").value = "";
   $("pcTaxaRf").value = "";
+  $("pcPagoTaxaRfCheck").checked = false;
+  $("pcDataTaxaRf").value = "";
+  $("pcFreteNac").value = "";
+  $("pcPagoFreteNacCheck").checked = false;
+  $("pcDataFreteNac").value = "";
   $("pcFotoInput").value = "";
   alert("Photocard cadastrado em Standby com sucesso!");
 }
 
-async function editarPC(id) {
+function abrirModalEditar(id) {
   const pc = ESTOQUE_GERAL.find(x => x.id === id);
   if (!pc) return;
+  $("editCardId").value = pc.id;
+  $("editNome").value = pc.nome || "";
+  $("editPreco").value = pc.preco || 0;
+  $("editLocal").value = pc.local || "";
+  $("editFreteInter").value = pc.freteInter || 0;
+  $("editDataFreteInter").value = pc.dataFreteInter || "";
+  $("editTaxaRf").value = pc.taxaRf || 0;
+  $("editDataTaxaRf").value = pc.dataTaxaRf || "";
+  $("editFreteNac").value = pc.freteNac || 0;
+  $("editDataFreteNac").value = pc.dataFreteNac || "";
+  $("modalEditarCard").classList.remove("hidden");
+}
 
-  const novoNome = prompt("Nome do photocard:", pc.nome);
-  if (novoNome === null) return;
-  const novoPreco = parseFloat(prompt("Preço (R$):", pc.preco));
-  if (isNaN(novoPreco)) return;
-  const novoLocal = prompt("Nome da Caixa / Lote (Ex: Caixa Thai):", pc.local);
-  if (novoLocal === null) return;
-  const novoFrete = parseFloat(prompt("Frete Inter (0 se não tiver):", pc.freteInter || 0)) || 0;
-  const novaTaxaRf = parseFloat(prompt("Taxa RF (0 se não tiver):", pc.taxaRf || 0)) || 0;
+function fecharModalEditar() {
+  $("modalEditarCard").classList.add("hidden");
+  $("editCardId").value = "";
+}
 
-  pc.nome = novoNome;
-  pc.preco = novoPreco;
-  pc.local = novoLocal;
-  pc.freteInter = novoFrete;
-  pc.taxaRf = novaTaxaRf;
+async function salvarEdicaoCard() {
+  const id = $("editCardId").value;
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (!pc) return;
+  pc.nome = $("editNome").value.trim();
+  pc.preco = parseFloat($("editPreco").value) || 0;
+  pc.local = $("editLocal").value.trim() || "Geral";
+  pc.freteInter = parseFloat($("editFreteInter").value) || 0;
+  pc.dataFreteInter = $("editDataFreteInter").value.trim();
+  pc.taxaRf = parseFloat($("editTaxaRf").value) || 0;
+  pc.dataTaxaRf = $("editDataTaxaRf").value.trim();
+  pc.freteNac = parseFloat($("editFreteNac").value) || 0;
+  pc.dataFreteNac = $("editDataFreteNac").value.trim();
 
-  if (window.db) {
-    await window.setDoc(window.doc(window.db, "estoque", id), pc);
-  }
+  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), pc);
+  fecharModalEditar();
   alert("Photocard atualizado com sucesso!");
+}
+
+async function alternarPagamento(id, campo) {
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (!pc) return;
+  pc[campo] = !pc[campo];
+  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), pc);
+}
+
+async function alterarStatusEnvioCard(id, statusId) {
+  const pc = ESTOQUE_GERAL.find(x => x.id === id);
+  if (!pc) return;
+  pc.statusEnvioId = statusId;
+  if (window.db) await window.setDoc(window.doc(window.db, "estoque", id), pc);
 }
 
 async function cadastrarJoinerAdmin() {
@@ -493,56 +1029,124 @@ async function cadastrarJoinerAdmin() {
   const nome = $("novoNome").value.trim();
   const senha = $("novaSenha").value.trim();
 
-  if (!user || !nome || !senha) return alert("Preencha todos os campos do cliente!");
-  if (JOINERS[user]) return alert("Esse usuário já está cadastrado!");
+  if (!user || !nome || !senha) return alert("Preencha todos os campos da joiner!");
+  if (JOINERS[user]) return alert("Essa joiner já está cadastrada!");
 
-  if (window.db) {
-    await window.setDoc(window.doc(window.db, "joiners", user), { nome, senha });
-  }
+  if (window.db) await window.setDoc(window.doc(window.db, "joiners", user), { nome, senha });
 
   $("novoUser").value = "";
   $("novoNome").value = "";
   $("novaSenha").value = "";
-  alert("Cliente cadastrada com sucesso!");
+  alert("Joiner cadastrada com sucesso!");
 }
 
 async function excluirPC(id) {
   if (confirm("Deseja realmente excluir este photocard?")) {
-    if (window.db) {
-      await window.deleteDoc(window.doc(window.db, "estoque", id));
-    }
+    if (window.db) await window.deleteDoc(window.doc(window.db, "estoque", id));
   }
 }
 
 function abrirModalClientes() {
-  const clientesKeys = Object.keys(JOINERS);
-  $("totalClientesCount").textContent = clientesKeys.length;
-  
-  if (!clientesKeys.length) {
-    $("containerListaTodasClientes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhuma cliente cadastrada ainda.</p>`;
-  } else {
-    let html = "";
-    clientesKeys.forEach(k => {
-      const cli = JOINERS[k];
-      const qtdCards = ESTOQUE_GERAL.filter(x => x.status === k).length;
-      html += `
-        <div class="p-3 bg-violet-50/40 rounded-2xl flex items-center justify-between">
-          <div>
-            <span class="font-bold text-sm text-violet-700 block">@${esc(k)}</span>
-            <span class="text-xs text-slate-600">${esc(cli.nome)}</span>
-            <span class="text-[11px] text-slate-400 block mt-0.5">Senha: <code class="bg-white px-1.5 py-0.5 rounded border border-violet-100">${esc(cli.senha)}</code></span>
-          </div>
-          <span class="px-3 py-1 bg-violet-500 text-white rounded-full text-xs font-bold">${qtdCards} ${qtdCards === 1 ? 'card' : 'cards'}</span>
-        </div>
-      `;
-    });
-    $("containerListaTodasClientes").innerHTML = html;
-  }
+  renderizarListaTodasClientes();
   $("modalListaClientes").classList.remove("hidden");
 }
 
 function fecharModalClientes() {
   $("modalListaClientes").classList.add("hidden");
+}
+
+function renderizarListaTodasClientes() {
+  const clientesKeys = Object.keys(JOINERS);
+  $("totalClientesCount").textContent = clientesKeys.length;
+  
+  if (!clientesKeys.length) {
+    $("containerListaTodasClientes").innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">Nenhuma joiner cadastrada ainda.</p>`;
+    return;
+  }
+
+  let html = "";
+  clientesKeys.forEach(k => {
+    const cli = JOINERS[k];
+    const qtdCards = ESTOQUE_GERAL.filter(x => x.status === k).length;
+    html += `
+      <div class="py-3 px-1 flex items-center justify-between">
+        <div>
+          <span class="font-bold text-sm text-violet-700 block">@${esc(k)}</span>
+          <span class="text-xs text-slate-600">${esc(cli.nome)}</span>
+          <span class="text-[11px] text-slate-400 block mt-0.5">Senha: <code class="bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">${esc(cli.senha)}</code></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-bold">${qtdCards} ${qtdCards === 1 ? 'card' : 'cards'}</span>
+          <button onclick="abrirModalEditarCliente('${esc(k)}')" class="px-2.5 py-1 rounded-xl bg-violet-500 text-white text-xs font-bold hover:bg-violet-600 transition">✏️ Editar</button>
+          <button onclick="excluirCliente('${esc(k)}')" class="p-1 text-rose-400 hover:text-rose-600 font-bold" title="Excluir cliente">✕</button>
+        </div>
+      </div>
+    `;
+  });
+  $("containerListaTodasClientes").innerHTML = html;
+}
+
+function abrirModalEditarCliente(key) {
+  const cli = JOINERS[key];
+  if (!cli) return;
+  $("editClientKeyOriginal").value = key;
+  $("editClientUser").value = key;
+  $("editClientName").value = cli.nome;
+  $("editClientPass").value = cli.senha;
+  $("modalEditarCliente").classList.remove("hidden");
+}
+
+function fecharModalEditarCliente() {
+  $("modalEditarCliente").classList.add("hidden");
+}
+
+async function salvarEdicaoCliente() {
+  const keyOriginal = $("editClientKeyOriginal").value;
+  let novoUser = $("editClientUser").value.trim().toLowerCase().replace(/^@/, "");
+  const novoNome = $("editClientName").value.trim();
+  const novaSenha = $("editClientPass").value.trim();
+
+  if (!novoUser || !novoNome || !novaSenha) return alert("Preencha todos os campos!");
+
+  if (window.db) {
+    if (novoUser !== keyOriginal) {
+      if (JOINERS[novoUser]) return alert("Já existe uma cliente com este novo usuário!");
+      await window.setDoc(window.doc(window.db, "joiners", novoUser), { nome: novoNome, senha: novaSenha });
+      await window.deleteDoc(window.doc(window.db, "joiners", keyOriginal));
+
+      for (let pc of ESTOQUE_GERAL) {
+        if (pc.status === keyOriginal) {
+          pc.status = novoUser;
+          await window.setDoc(window.doc(window.db, "estoque", pc.id), pc);
+        }
+      }
+    } else {
+      await window.setDoc(window.doc(window.db, "joiners", keyOriginal), { nome: novoNome, senha: novaSenha });
+    }
+  }
+
+  fecharModalEditarCliente();
+  renderizarListaTodasClientes();
+  alert("Cliente atualizada com sucesso!");
+}
+
+async function excluirCliente(key) {
+  if (confirm(`Deseja realmente excluir a cliente @${key}? Os photocards dela voltarão para Standby.`)) {
+    if (window.db) {
+      // Deletar documento da joiner
+      await window.deleteDoc(window.doc(window.db, "joiners", key));
+
+      // Jogar os cards dela de volta para Standby
+      for (let pc of ESTOQUE_GERAL) {
+        if (pc.status === key) {
+          pc.status = "standby";
+          await window.setDoc(window.doc(window.db, "estoque", pc.id), pc);
+        }
+      }
+    }
+    renderizarListaTodasClientes();
+    alert("Cliente excluída com sucesso!");
+  }
 }
 
 function abrirModalStatus(id) {
@@ -558,24 +1162,19 @@ function fecharModalStatus() {
   cardEditandoId = null;
 }
 
-function filtrarListaClientesModal(termo) {
-  renderizarListaClientesModal(termo.toLowerCase());
-}
+function filtrarListaClientesModal(termo) { renderizarListaClientesModal(termo.toLowerCase()); }
 
 function renderizarListaClientesModal(filtro) {
   const clientesKeys = Object.keys(JOINERS);
   let html = "";
-
   if (!clientesKeys.length) {
-    $("listaClientesModal").innerHTML = `<p class="text-xs text-slate-400 p-2 text-center">Nenhuma cliente cadastrada ainda.</p>`;
+    $("listaClientesModal").innerHTML = `<p class="text-xs text-slate-400 p-2 text-center">Nenhuma joiner cadastrada ainda.</p>`;
     return;
   }
-
   clientesKeys.forEach(k => {
     const cli = JOINERS[k];
     const textoBusca = `${k} ${cli.nome}`.toLowerCase();
     if (filtro && !textoBusca.includes(filtro)) return;
-
     html += `
       <button onclick="alterarStatusModal('${k}')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-violet-50 flex items-center justify-between transition group">
         <div>
@@ -586,18 +1185,17 @@ function renderizarListaClientesModal(filtro) {
       </button>
     `;
   });
-
-  $("listaClientesModal").innerHTML = html || `<p class="text-xs text-slate-400 p-2 text-center">Nenhuma cliente encontrada.</p>`;
+  $("listaClientesModal").innerHTML = html || `<p class="text-xs text-slate-400 p-2 text-center">Nenhuma joiner encontrada.</p>`;
 }
 
 async function alterarStatusModal(novoStatus) {
   if (!cardEditandoId) return;
   const pc = ESTOQUE_GERAL.find(x => x.id === cardEditandoId);
-  if (pc && window.db) {
-    pc.status = novoStatus;
-    await window.setDoc(window.doc(window.db, "estoque", pc.id), pc);
-  }
+  if (!pc) return;
+  pc.status = novoStatus;
+  if (window.db) await window.setDoc(window.doc(window.db, "estoque", cardEditandoId), pc);
   fecharModalStatus();
+  renderTabelaAdmin();
 }
 
 function toggleCaixaAdmin(nomeCaixa) {
@@ -611,12 +1209,25 @@ function renderTabelaAdmin() {
     return;
   }
 
+  const filtroAdmin = ($("inputBuscaAdmin") ? $("inputBuscaAdmin").value : "").toLowerCase();
   let caixasMap = {};
+
   ESTOQUE_GERAL.forEach(pc => {
-    const caixaNome = pc.local || "Caixa Geral";
+    if (filtroAdmin) {
+      const matchNome = pc.nome.toLowerCase().includes(filtroAdmin);
+      const matchLocal = pc.local.toLowerCase().includes(filtroAdmin);
+      const matchStatus = pc.status.toLowerCase().includes(filtroAdmin);
+      if (!matchNome && !matchLocal && !matchStatus) return;
+    }
+    const caixaNome = pc.local || "Geral";
     if (!caixasMap[caixaNome]) caixasMap[caixaNome] = [];
     caixasMap[caixaNome].push(pc);
   });
+
+  if (Object.keys(caixasMap).length === 0) {
+    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-3xl p-6 text-center text-slate-400 border border-violet-100">Nenhum photocard encontrado com esse filtro.</div>`;
+    return;
+  }
 
   let htmlCaixas = "";
   for (let caixaNome in caixasMap) {
@@ -632,8 +1243,8 @@ function renderTabelaAdmin() {
             <thead>
               <tr class="border-b border-violet-100 text-xs font-bold text-violet-400 uppercase">
                 <th class="py-3 px-2">Foto</th>
-                <th class="py-3 px-2">Nome / Preço</th>
-                <th class="py-3 px-2">Status / Destino</th>
+                <th class="py-3 px-2">Nome / Preço & Pagamento</th>
+                <th class="py-3 px-2">Joiner / Disponível</th>
                 <th class="py-3 px-2 text-right">Ações</th>
               </tr>
             </thead>
@@ -650,6 +1261,21 @@ function renderTabelaAdmin() {
                   badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-100 text-violet-800 font-bold text-xs">👤 @${esc(pc.status)} (${esc(nomeCli)})</span>`;
                 }
 
+                const btnPagoCard = `<button onclick="alternarPagamento('${pc.id}', 'pagoCard')" class="px-2 py-0.5 rounded text-[10px] font-bold ${pc.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoCard ? 'Pago' : 'Não pago'}</button>`;
+                
+                const fInter = Number(pc.freteInter) || 0;
+                const tRf = Number(pc.taxaRf) || 0;
+                const fNac = Number(pc.freteNac) || 0;
+
+                const btnPagoFInter = fInter > 0 ? `<button onclick="alternarPagamento('${pc.id}', 'pagoFreteInter')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${pc.pagoFreteInter ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoFreteInter ? 'Pago' : 'Não pago'}</button>` : '';
+                const btnPagoTRf = tRf > 0 ? `<button onclick="alternarPagamento('${pc.id}', 'pagoTaxaRf')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${pc.pagoTaxaRf ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoTaxaRf ? 'Pago' : 'Não pago'}</button>` : '';
+                const btnPagoFNac = fNac > 0 ? `<button onclick="alternarPagamento('${pc.id}', 'pagoFreteNac')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${pc.pagoFreteNac ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoFreteNac ? 'Pago' : 'Não pago'}</button>` : '';
+
+                let statusOptions = `<option value="">Nenhum status</option>`;
+                STATUS_PERSONALIZADOS.forEach(s => {
+                  statusOptions += `<option value="${s.id}" ${pc.statusEnvioId === s.id ? 'selected' : ''}>${s.nome}</option>`;
+                });
+
                 return `
                   <tr class="hover:bg-violet-50/40 transition">
                     <td class="py-3 px-2 w-14">
@@ -657,7 +1283,19 @@ function renderTabelaAdmin() {
                     </td>
                     <td class="py-3 px-2">
                       <div class="font-bold text-slate-700">${esc(pc.nome)}</div>
-                      <div class="text-xs text-violet-600 font-bold">${brl(pc.preco)}</div>
+                      <div class="text-xs text-violet-600 font-bold flex items-center gap-2 mt-0.5">
+                        ${brl(pc.preco)} ${btnPagoCard}
+                      </div>
+                      <div class="mt-1.5 text-[11px] text-slate-500 space-y-1">
+                        ${fInter > 0 ? `<div>Frete Inter: <b>${brl(fInter)}</b> ${btnPagoFInter}</div>` : ''}
+                        ${tRf > 0 ? `<div>Taxa RF: <b>${brl(tRf)}</b> ${btnPagoTRf}</div>` : ''}
+                        ${fNac > 0 ? `<div>Frete Nac: <b>${brl(fNac)}</b> ${btnPagoFNac}</div>` : ''}
+                      </div>
+                      <div class="mt-2">
+                        <select onchange="alterarStatusEnvioCard('${pc.id}', this.value)" class="text-[11px] px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 font-bold text-violet-700">
+                          ${statusOptions}
+                        </select>
+                      </div>
                     </td>
                     <td class="py-3 px-2">
                       <button onclick="abrirModalStatus('${pc.id}')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-violet-200 shadow-sm hover:bg-violet-50 transition text-xs font-bold text-violet-700">
@@ -666,7 +1304,7 @@ function renderTabelaAdmin() {
                       </button>
                     </td>
                     <td class="py-3 px-2 text-right space-x-1">
-                      <button onclick="editarPC('${pc.id}')" class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-600 text-xs font-bold hover:bg-violet-200 transition">✏️ Editar</button>
+                      <button onclick="abrirModalEditar('${pc.id}')" class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-600 text-xs font-bold hover:bg-violet-200 transition">✏️ Editar</button>
                       <button onclick="excluirPC('${pc.id}')" class="text-rose-400 hover:text-rose-600 font-bold p-1" title="Excluir item">✕</button>
                     </td>
                   </tr>
@@ -698,41 +1336,203 @@ function renderTabelaAdmin() {
 }
 
 function gerarLinkZap(p) {
-  const txt = encodeURIComponent(`Olá! Tenho interesse nesse card:\nItem: ${p.nome}\nPreço: ${brl(p.preco)}\nLote: ${p.local}`);
+  const txt = encodeURIComponent(`Olá! Tenho interesse nesse card:\nItem: *${p.nome}*\nPreço: ${brl(p.preco)}\nCaixa: ${p.local}`);
   return `${LOJA.whatsapp}?text=${txt}`;
 }
 
-function renderCardDisponivel(p) {
-  return `
-    <article class="bg-white rounded-3xl overflow-hidden shadow-md shadow-violet-100 border border-violet-100 flex flex-col justify-between cursor-pointer hover:shadow-lg transition">
-      <div onclick="abrirModalDetalhesPorId('${p.id}')">
-        <div class="px-3 py-1.5 bg-gradient-to-r from-violet-100 to-sky-100 text-[10px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
-          <i data-lucide="package" class="w-3 h-3"></i>${esc(p.local)}
-        </div>
-        <div class="aspect-[3/4] relative bg-violet-50">
-          ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
-        </div>
-        <div class="p-3">
-          <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
-          <p class="mt-2 text-lg font-bold text-violet-600">${brl(p.preco)}</p>
-        </div>
-      </div>
-      <div class="p-3 pt-0">
-        <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition" onclick="event.stopPropagation()">
-          <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
-        </a>
-      </div>
-    </article>
-  `;
+function mudarLayoutVitrine(tipo) {
+  layoutVitrineAtual = tipo;
+  $("btnVitrineGrid").className = tipo === 'grid' ? "p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition" : "p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition";
+  $("btnVitrineList").className = tipo === 'list' ? "p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition" : "p-2 rounded-xl text-slate-400 hover:text-violet-600 font-bold text-xs flex items-center gap-1 transition";
+  renderVitrineDisponiveis();
+}
+
+function toggleDropdownFiltroExcel() {
+  const drop = $("dropdownFiltroExcel");
+  drop.classList.toggle("hidden");
+  if (!drop.classList.contains("hidden")) popularListasExcel("");
+}
+
+function fecharDropdownFiltroExcel() { $("dropdownFiltroExcel").classList.add("hidden"); }
+
+function extrairPartesNome(nome) {
+  const partes = nome.split(" - ");
+  if (partes.length >= 2) return { artista: partes[0].trim(), item: partes.slice(1).join(" - ").trim() };
+  return { artista: "Outros", item: nome.trim() };
+}
+
+function popularListasExcel(filtroTexto = "") {
+  let disponiveis = ESTOQUE_GERAL.filter(x => x.status === "disponivel");
+  let artistasSet = new Set(), itensSet = new Set(), caixasSet = new Set(), statusSet = new Set();
+
+  disponiveis.forEach(p => {
+    const { artista, item } = extrairPartesNome(p.nome || "");
+    artistasSet.add(artista);
+    itensSet.add(item);
+    caixasSet.add(p.local || "Geral");
+    let statusNome = "Sem status";
+    if (p.statusEnvioId) {
+      let stObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+      if (stObj) statusNome = stObj.nome;
+    }
+    statusSet.add(statusNome);
+  });
+
+  if (Object.keys(filtrosExcelState.artista).length === 0) {
+    artistasSet.forEach(a => filtrosExcelState.artista[a] = true);
+    itensSet.forEach(i => filtrosExcelState.item[i] = true);
+    caixasSet.forEach(c => filtrosExcelState.caixa[c] = true);
+    statusSet.forEach(s => filtrosExcelState.status[s] = true);
+  }
+
+  renderSubgrupoExcel('artista', Array.from(artistasSet), filtroTexto);
+  renderSubgrupoExcel('item', Array.from(itensSet), filtroTexto);
+  renderSubgrupoExcel('caixa', Array.from(caixasSet), filtroTexto);
+  renderSubgrupoExcel('status', Array.from(statusSet), filtroTexto);
+}
+
+function renderSubgrupoExcel(tipo, lista, filtroTexto) {
+  if (filtroTexto) lista = lista.filter(x => x.toLowerCase().includes(filtroTexto.toLowerCase()));
+  let html = "";
+  lista.sort().forEach(val => {
+    if (filtrosExcelState[tipo][val] === undefined) filtrosExcelState[tipo][val] = true;
+    const marcado = filtrosExcelState[tipo][val];
+    html += `
+      <label class="flex items-center gap-2 font-medium text-slate-700 cursor-pointer hover:bg-violet-50 p-1 rounded">
+        <input type="checkbox" value="${esc(val)}" ${marcado ? 'checked' : ''} onchange="atualizarCheckExcel('${tipo}', '${esc(val)}', this.checked)" class="rounded accent-violet-600 w-3.5 h-3.5"> ${esc(val)}
+      </label>
+    `;
+  });
+  const containerId = tipo === 'artista' ? 'excelArtistasList' : tipo === 'item' ? 'excelItensList' : tipo === 'caixa' ? 'excelCaixasList' : 'excelStatusList';
+  $(containerId).innerHTML = html || `<span class="text-slate-400">Nenhum encontrado.</span>`;
+}
+
+function filtrarSubgrupoExcel(tipo, termo) { popularListasExcel(termo); }
+function atualizarCheckExcel(tipo, valor, status) { filtrosExcelState[tipo][valor] = status; }
+
+function marcarTodosExcel(tipo, status) {
+  for (let k in filtrosExcelState[tipo]) filtrosExcelState[tipo][k] = status;
+  popularListasExcel("");
+}
+
+function aplicarFiltroExcel() {
+  fecharDropdownFiltroExcel();
+  renderVitrineDisponiveis();
 }
 
 function renderVitrineDisponiveis() {
-  const disponiveis = ESTOQUE_GERAL.filter(x => x.status === "disponivel");
+  const busca = ($("inputBuscaVitrine") ? $("inputBuscaVitrine").value : "").toLowerCase();
+  const ordenacao = $("selectOrdenacaoVitrine") ? $("selectOrdenacaoVitrine").value : "padrao";
+  let disponiveis = ESTOQUE_GERAL.filter(x => x.status === "disponivel");
+
+  disponiveis.forEach(p => {
+    const { artista, item } = extrairPartesNome(p.nome || "");
+    const caixa = p.local || "Geral";
+    let statusNome = "Sem status";
+    if (p.statusEnvioId) {
+      let stObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+      if (stObj) statusNome = stObj.nome;
+    }
+    if (filtrosExcelState.artista[artista] === undefined) filtrosExcelState.artista[artista] = true;
+    if (filtrosExcelState.item[item] === undefined) filtrosExcelState.item[item] = true;
+    if (filtrosExcelState.caixa[caixa] === undefined) filtrosExcelState.caixa[caixa] = true;
+    if (filtrosExcelState.status[statusNome] === undefined) filtrosExcelState.status[statusNome] = true;
+  });
+
+  disponiveis = disponiveis.filter(p => {
+    const { artista, item } = extrairPartesNome(p.nome || "");
+    const caixa = p.local || "Geral";
+    let statusNome = "Sem status";
+    if (p.statusEnvioId) {
+      let stObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+      if (stObj) statusNome = stObj.nome;
+    }
+    return filtrosExcelState.artista[artista] !== false &&
+           filtrosExcelState.item[item] !== false &&
+           filtrosExcelState.caixa[caixa] !== false &&
+           filtrosExcelState.status[statusNome] !== false;
+  });
+
+  if (busca) disponiveis = disponiveis.filter(x => x.nome.toLowerCase().includes(busca) || (x.local || "").toLowerCase().includes(busca));
+
+  disponiveis.sort((a, b) => {
+    const totalA = (Number(a.preco) || 0) + (Number(a.freteInter) || 0) + (Number(a.taxaRf) || 0) + (Number(a.freteNac) || 0);
+    const totalB = (Number(b.preco) || 0) + (Number(b.freteInter) || 0) + (Number(b.taxaRf) || 0) + (Number(b.freteNac) || 0);
+    if (ordenacao === 'preco_crescente') return totalA - totalB;
+    if (ordenacao === 'preco_decrescente') return totalB - totalA;
+    if (ordenacao === 'az') return a.nome.localeCompare(b.nome);
+    if (ordenacao === 'za') return b.nome.localeCompare(a.nome);
+    return 0;
+  });
+
   if (!disponiveis.length) {
-    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full">Nenhum item disponível no momento 💜</p>`;
+    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full text-center py-8">Nenhum item disponível encontrado 💜</p>`;
     return;
   }
-  $("gridDisponiveis").innerHTML = disponiveis.map(renderCardDisponivel).join("");
+
+  if (layoutVitrineAtual === 'grid') {
+    $("gridDisponiveis").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">${disponiveis.map(p => {
+      const precoCard = Number(p.preco) || 0;
+      const fInter = Number(p.freteInter) || 0;
+      const tRf = Number(p.taxaRf) || 0;
+      const fNac = Number(p.freteNac) || 0;
+      const totalItem = precoCard + fInter + tRf + fNac;
+
+      const txtFInter = fInter > 0 ? `<div class="text-xs text-slate-600">Frete Inter: <b>${brl(fInter)}</b></div>` : '';
+      const txtTRf = tRf > 0 ? `<div class="text-xs text-slate-600">Taxa RF: <b>${brl(tRf)}</b></div>` : '';
+      const txtFNac = fNac > 0 ? `<div class="text-xs text-slate-600">Frete Nac: <b>${brl(fNac)}</b></div>` : '';
+
+      return `
+        <article class="bg-white rounded-3xl overflow-hidden shadow-md shadow-violet-100 border border-violet-100 flex flex-col justify-between">
+          <div>
+            <div class="px-3 py-1.5 bg-gradient-to-r from-violet-100 to-sky-100 text-[10px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
+              <i data-lucide="package" class="w-3 h-3"></i>${esc(p.local)}
+            </div>
+            <div class="aspect-[3/4] relative bg-violet-50">
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
+            </div>
+            <div class="p-3">
+              <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
+              <div class="mt-2 text-xs text-slate-600">Card: <b>${brl(precoCard)}</b></div>
+              <div class="mt-1 space-y-0.5">${txtFInter}${txtTRf}${txtFNac}</div>
+              <div class="mt-3 pt-2 border-t border-violet-100 text-base font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
+            </div>
+          </div>
+          <div class="p-3 pt-0">
+            <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+              <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
+            </a>
+          </div>
+        </article>
+      `;
+    }).join("")}</div>`;
+  } else {
+    $("gridDisponiveis").innerHTML = `<div class="space-y-2">${disponiveis.map(p => {
+      const precoCard = Number(p.preco) || 0;
+      const fInter = Number(p.freteInter) || 0;
+      const tRf = Number(p.taxaRf) || 0;
+      const fNac = Number(p.freteNac) || 0;
+      const totalItem = precoCard + fInter + tRf + fNac;
+
+      return `
+        <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-16 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
+            </div>
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
+              <h3 class="font-bold text-sm text-slate-800 mt-1">${esc(p.nome)}</h3>
+              <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
+            </div>
+          </div>
+          <a href="${gerarLinkZap(p)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0">
+            <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
+          </a>
+        </article>
+      `;
+    }).join("")}</div>`;
+  }
   lucide.createIcons();
 }
 
@@ -741,7 +1541,6 @@ function login(e) {
   const key = $("user").value.trim().replace(/^@/, "").toLowerCase();
   const pass = $("pass").value;
   const j = JOINERS[key];
-  
   const isValid = j && j.senha === pass;
   $("erro").classList.toggle("hidden", isValid);
   if (!isValid) return;
@@ -767,10 +1566,7 @@ function tab(n) {
   renderizarConteudoCliente();
 }
 
-function atualizarFiltroJoiner() {
-  renderizarConteudoCliente();
-}
-
+function atualizarFiltroJoiner() { renderizarConteudoCliente(); }
 function toggleCaixa(nomeCaixa) {
   caixasExpandidas[nomeCaixa] = !caixasExpandidas[nomeCaixa];
   renderizarConteudoCliente();
@@ -780,35 +1576,8 @@ function renderizarConteudoCliente() {
   const busca = $("inputBusca").value.toLowerCase();
   
   if (abaAtualJoiner === 1) {
-    let itens = ESTOQUE_GERAL.filter(x => x.status === "disponivel");
-    if (busca) itens = itens.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
-
-    if (!itens.length) {
-      $("containerAreaCliente").innerHTML = `<p class="text-slate-400">Nenhum item disponível encontrado 💜</p>`;
-      return;
-    }
-
-    if (layoutAtual === 'grid') {
-      $("containerAreaCliente").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">${itens.map(renderCardDisponivel).join("")}</div>`;
-    } else {
-      $("containerAreaCliente").innerHTML = `<div class="space-y-3">${itens.map(p => `
-        <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4 cursor-pointer hover:shadow transition" onclick="abrirModalDetalhesPorId('${p.id}')">
-          <div class="flex items-center gap-3">
-            <div class="w-14 h-20 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
-              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-xl text-violet-300">🎴</div>`}
-            </div>
-            <div>
-              <span class="text-[10px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
-              <h3 class="font-bold text-sm text-slate-800 mt-1">${esc(p.nome)}</h3>
-              <p class="text-base font-bold text-violet-600 mt-1">${brl(p.preco)}</p>
-            </div>
-          </div>
-          <a href="${gerarLinkZap(p)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0" onclick="event.stopPropagation()">
-            <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
-          </a>
-        </article>`).join("")}</div>`;
-    }
-
+    renderVitrineDisponiveis();
+    return;
   } else {
     let meusPCs = ESTOQUE_GERAL.filter(x => x.status === clienteAtualKey);
     if (busca) meusPCs = meusPCs.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
@@ -820,7 +1589,7 @@ function renderizarConteudoCliente() {
 
     let caixasMap = {};
     meusPCs.forEach(p => {
-      const caixaNome = p.local || "Caixa Geral";
+      const caixaNome = p.local || "Geral";
       if (!caixasMap[caixaNome]) caixasMap[caixaNome] = [];
       caixasMap[caixaNome].push(p);
     });
@@ -835,17 +1604,34 @@ function renderizarConteudoCliente() {
       if (aberta) {
         if (layoutAtual === 'grid') {
           conteudoCaixaHtml = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-violet-50/30">${listaItens.map(p => {
+            const precoCard = Number(p.preco) || 0;
             const fInter = Number(p.freteInter) || 0;
             const tRf = Number(p.taxaRf) || 0;
-            const totalItem = Number(p.preco) + fInter + tRf;
+            const fNac = Number(p.freteNac) || 0;
+            const totalItem = precoCard + fInter + tRf + fNac;
             
-            let taxasInfo = "";
-            if (fInter > 0 || tRf > 0) {
-              taxasInfo = `<div class="mt-2 pt-2 border-t border-dashed border-violet-100 text-xs text-slate-500 space-y-1 font-mono">
-                ${fInter > 0 ? `<div>Frete Inter: <b>${brl(fInter)}</b> (Pendente)</div>` : ""}
-                ${tRf > 0 ? `<div>Taxa RF: <b>${brl(tRf)}</b> (Pendente)</div>` : ""}
-              </div>`;
-            }
+            const badgeCard = `<button onclick="alternarPagamento('${p.id}', 'pagoCard')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoCard ? 'Pago' : 'Pendente'}</button>`;
+            
+            const badgeFInter = fInter > 0 ? `
+              <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
+                <span>Frete Inter: <b>${brl(fInter)}</b> ${p.dataFreteInter ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataFreteInter)})</span>` : ''}</span>
+                <button onclick="alternarPagamento('${p.id}', 'pagoFreteInter')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoFreteInter ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoFreteInter ? 'Pago' : 'Pendente'}</button>
+              </div>` : '';
+
+            const badgeTRf = tRf > 0 ? `
+              <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
+                <span>Taxa RF: <b>${brl(tRf)}</b> ${p.dataTaxaRf ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataTaxaRf)})</span>` : ''}</span>
+                <button onclick="alternarPagamento('${p.id}', 'pagoTaxaRf')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoTaxaRf ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoTaxaRf ? 'Pago' : 'Pendente'}</button>
+              </div>` : '';
+
+            const badgeFNac = fNac > 0 ? `
+              <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
+                <span>Frete Nac: <b>${brl(fNac)}</b> ${p.dataFreteNac ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataFreteNac)})</span>` : ''}</span>
+                <button onclick="alternarPagamento('${p.id}', 'pagoFreteNac')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoFreteNac ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoFreteNac ? 'Pago' : 'Pendente'}</button>
+              </div>` : '';
+
+            let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+            let statusEnvioBadge = statusObj ? `<div class="mt-2 text-xs font-bold px-2.5 py-1 rounded-lg border inline-block ${statusObj.cor}">🚚 ${esc(statusObj.nome)}</div>` : '';
 
             return `
               <article class="bg-white rounded-3xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
@@ -855,8 +1641,15 @@ function renderizarConteudoCliente() {
                   </div>
                   <div class="p-3">
                     <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
-                    <p class="mt-2 text-lg font-bold text-violet-600">${brl(totalItem)} <span class="text-[10px] text-slate-400">total</span></p>
-                    ${taxasInfo}
+                    <div class="mt-2 flex items-center justify-between">
+                      <span class="text-xs text-slate-600">Card: ${brl(precoCard)}</span>
+                      ${badgeCard}
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-dashed border-violet-100 text-xs space-y-1.5 flex flex-col items-start w-full">
+                      ${badgeFInter}${badgeTRf}${badgeFNac}
+                    </div>
+                    ${statusEnvioBadge}
+                    <div class="mt-3 pt-2 border-t border-violet-100 text-base font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
                   </div>
                 </div>
               </article>
@@ -864,14 +1657,15 @@ function renderizarConteudoCliente() {
           }).join("")}</div>`;
         } else {
           conteudoCaixaHtml = `<div class="space-y-2 p-4 bg-violet-50/30">${listaItens.map(p => {
+            const precoCard = Number(p.preco) || 0;
             const fInter = Number(p.freteInter) || 0;
             const tRf = Number(p.taxaRf) || 0;
-            const totalItem = Number(p.preco) + fInter + tRf;
+            const fNac = Number(p.freteNac) || 0;
+            const totalItem = precoCard + fInter + tRf + fNac;
 
-            let taxasBadge = "";
-            if (fInter > 0 || tRf > 0) {
-              taxasBadge = `<div class="text-xs text-slate-500 mt-0.5 font-mono">Taxas: ${fInter > 0 ? `Frete (${brl(fInter)}) ` : ""}${tRf > 0 ? `RF (${brl(tRf)})` : ""}</div>`;
-            }
+            const badgeCard = `<button onclick="alternarPagamento('${p.id}', 'pagoCard')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${p.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${p.pagoCard ? 'Pago' : 'Pendente'}</button>`;
+            let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
+            let statusEnvioBadge = statusObj ? `<span class="ml-2 text-xs font-bold px-2 py-0.5 rounded border ${statusObj.cor}">🚚 ${esc(statusObj.nome)}</span>` : '';
 
             return `
               <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
@@ -880,8 +1674,11 @@ function renderizarConteudoCliente() {
                     ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
                   </div>
                   <div>
-                    <h3 class="font-bold text-sm text-slate-800">${esc(p.nome)}</h3>
-                    ${taxasBadge}
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-bold text-sm text-slate-800">${esc(p.nome)}</h3>
+                      ${badgeCard}
+                      ${statusObj ? statusEnvioBadge : ''}
+                    </div>
                     <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
                   </div>
                 </div>
@@ -905,16 +1702,15 @@ function renderizarConteudoCliente() {
         </div>
       `;
     }
-
     $("containerAreaCliente").innerHTML = htmlCaixas;
   }
-
   lucide.createIcons();
 }
 
 function show(id) {
   ["home", "vitrine", "admin", "joiner"].forEach(s => $(s).classList.toggle("hidden", s !== id));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  if (id === 'vitrine') renderVitrineDisponiveis();
   lucide.createIcons();
 }
 

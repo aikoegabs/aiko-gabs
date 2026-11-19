@@ -82,6 +82,7 @@ let STATUS_PERSONALIZADOS = [
 
 let ARTISTAS_PERSONALIZADAS = ["Milk Pansawa", "Love Pattranite", "View Benyapa", "Tu Tontawan"];
 let ITENS_PERSONALIZADOS = ["Special Photocard", "Benefit Card", "Standard Card", "Polaroid"];
+let VERSOES_PERSONALIZADAS = ["Album Ver. A", "Album Ver. B", "Pre-Order Benefit", "Fansign Ver."];
 
 function iniciarSincronizacaoRealtime() {
   if (!window.db) return;
@@ -148,6 +149,13 @@ function iniciarSincronizacaoRealtime() {
     if (docSnap.exists() && docSnap.data().lista) {
       ITENS_PERSONALIZADOS = docSnap.data().lista;
       renderizarGerenciadorItens();
+    }
+  });
+
+  window.onSnapshot(window.doc(window.db, "configuracoes", "versoes"), (docSnap) => {
+    if (docSnap.exists() && docSnap.data().lista) {
+      VERSOES_PERSONALIZADAS = docSnap.data().lista;
+      renderizarGerenciadorVersoes();
     }
   });
 }
@@ -358,6 +366,18 @@ function iniciarSincronizacaoRealtime() {
             <input id="inputBuscaItemAdmin" placeholder="Pesquisar ou selecionar item..." autocomplete="off" onfocus="abrirDropdownAdmin('Item')" oninput="filtrarDropdownAdmin('Item', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcItemSelecionado">
             <div id="dropdownItemAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
+          </div>
+
+          <div class="relative">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Versão</label>
+              <button onclick="abrirModalVersoesConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Versões
+              </button>
+            </div>
+            <input id="inputBuscaVersaoAdmin" placeholder="Pesquisar ou selecionar versão..." autocomplete="off" onfocus="abrirDropdownAdmin('Versao')" oninput="filtrarDropdownAdmin('Versao', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input type="hidden" id="pcVersaoSelecionada">
+            <div id="dropdownVersaoAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
           </div>
 
           <div class="grid grid-cols-2 gap-2">
@@ -585,6 +605,20 @@ function iniciarSincronizacaoRealtime() {
     <div class="space-y-2 pt-2 border-t border-violet-100">
       <input id="novoItemNomeInput" placeholder="Nome do Item" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
       <button onclick="adicionarItemPersonalizado()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Item</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalVersoesConfig" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-violet-100 fade">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-violet-700 flex items-center gap-2"><i data-lucide="layers" class="w-5 h-5"></i> Personalizar Versões</h3>
+      <button onclick="fecharModalVersoesConfig()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto p-1" id="listaVersoesConfigs"></div>
+    <div class="space-y-2 pt-2 border-t border-violet-100">
+      <input id="novaVersaoNomeInput" placeholder="Nome da Versão (ex: Album Ver. A)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
+      <button onclick="adicionarVersaoPersonalizada()" class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition">Adicionar Versão</button>
     </div>
   </div>
 </div>
@@ -895,6 +929,7 @@ function tentarEntrarAdmin() {
   renderizarGerenciadorStatus();
   renderizarGerenciadorArtistas();
   renderizarGerenciadorItens();
+  renderizarGerenciadorVersoes();
 }
 
 async function registrarAcaoAdmin(descricao) {
@@ -928,6 +963,9 @@ function fecharModalArtistasConfig() { $("modalArtistasConfig").classList.add("h
 function abrirModalItensConfig() { renderizarGerenciadorItens(); $("modalItensConfig").classList.remove("hidden"); }
 function fecharModalItensConfig() { $("modalItensConfig").classList.add("hidden"); }
 
+function abrirModalVersoesConfig() { renderizarGerenciadorVersoes(); $("modalVersoesConfig").classList.remove("hidden"); }
+function fecharModalVersoesConfig() { $("modalVersoesConfig").classList.add("hidden"); }
+
 function renderizarGerenciadorStatus() {
   let html = "";
   STATUS_PERSONALIZADOS.forEach((s, idx) => {
@@ -952,15 +990,23 @@ function renderizarGerenciadorItens() {
   $("listaItensConfigs").innerHTML = html || `<span class="text-xs text-slate-400">Nenhum item cadastrado.</span>`;
 }
 
+function renderizarGerenciadorVersoes() {
+  let html = "";
+  VERSOES_PERSONALIZADAS.forEach((versao, idx) => {
+    html += `<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-violet-200 bg-violet-50 text-violet-800 text-xs font-bold"><span>${esc(versao)}</span><button onclick="removerVersaoPersonalizada(${idx})" class="hover:opacity-75 text-rose-500 font-bold">✕</button></div>`;
+  });
+  $("listaVersoesConfigs").innerHTML = html || `<span class="text-xs text-slate-400">Nenhuma versão cadastrada.</span>`;
+}
+
 function abrirDropdownAdmin(tipo) {
-  const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : 'dropdownStatusAdmin';
+  const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : tipo === 'Versao' ? 'dropdownVersaoAdmin' : 'dropdownStatusAdmin';
   $(dropId).classList.remove('hidden');
   filtrarDropdownAdmin(tipo, '');
 }
 
 function filtrarDropdownAdmin(tipo, termo) {
-  const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : 'dropdownStatusAdmin';
-  let lista = tipo === 'Artista' ? ARTISTAS_PERSONALIZADAS : tipo === 'Item' ? ITENS_PERSONALIZADOS : STATUS_PERSONALIZADOS.map(s => s.nome);
+  const dropId = tipo === 'Artista' ? 'dropdownArtistaAdmin' : tipo === 'Item' ? 'dropdownItemAdmin' : tipo === 'Versao' ? 'dropdownVersaoAdmin' : 'dropdownStatusAdmin';
+  let lista = tipo === 'Artista' ? ARTISTAS_PERSONALIZADAS : tipo === 'Item' ? ITENS_PERSONALIZADOS : tipo === 'Versao' ? VERSOES_PERSONALIZADAS : STATUS_PERSONALIZADOS.map(s => s.nome);
   if (termo) lista = lista.filter(x => x.toLowerCase().includes(termo.toLowerCase()));
   let html = "";
   if (!lista.length) {
@@ -983,6 +1029,10 @@ function selecionarOpcaoAdmin(tipo, valor) {
     $("inputBuscaItemAdmin").value = valor;
     $("pcItemSelecionado").value = valor;
     $("dropdownItemAdmin").classList.add('hidden');
+  } else if (tipo === 'Versao') {
+    $("inputBuscaVersaoAdmin").value = valor;
+    $("pcVersaoSelecionada").value = valor;
+    $("dropdownVersaoAdmin").classList.add('hidden');
   } else if (tipo === 'Status') {
     $("inputBuscaStatusAdmin").value = valor;
     let stObj = STATUS_PERSONALIZADOS.find(s => s.nome === valor);
@@ -997,6 +1047,9 @@ document.addEventListener('click', function(e) {
   }
   if (!e.target.closest('#inputBuscaItemAdmin') && !e.target.closest('#dropdownItemAdmin')) {
     if ($("dropdownItemAdmin")) $("dropdownItemAdmin").classList.add('hidden');
+  }
+  if (!e.target.closest('#inputBuscaVersaoAdmin') && !e.target.closest('#dropdownVersaoAdmin')) {
+    if ($("dropdownVersaoAdmin")) $("dropdownVersaoAdmin").classList.add('hidden');
   }
   if (!e.target.closest('#inputBuscaStatusAdmin') && !e.target.closest('#dropdownStatusAdmin')) {
     if ($("dropdownStatusAdmin")) $("dropdownStatusAdmin").classList.add('hidden');
@@ -1053,6 +1106,22 @@ async function removerItemPersonalizado(index) {
   renderizarGerenciadorItens();
 }
 
+async function adicionarVersaoPersonalizada() {
+  const nome = $("novaVersaoNomeInput").value.trim();
+  if (!nome) return alert("Digite o nome da versão!");
+  if (VERSOES_PERSONALIZADAS.includes(nome)) return alert("Essa versão já está cadastrada!");
+  VERSOES_PERSONALIZADAS.push(nome);
+  $("novaVersaoNomeInput").value = "";
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "versoes"), { lista: VERSOES_PERSONALIZADAS });
+  renderizarGerenciadorVersoes();
+}
+
+async function removerVersaoPersonalizada(index) {
+  VERSOES_PERSONALIZADAS.splice(index, 1);
+  if (window.db) await window.setDoc(window.doc(window.db, "configuracoes", "versoes"), { lista: VERSOES_PERSONALIZADAS });
+  renderizarGerenciadorVersoes();
+}
+
 const renderImgBox = (src, id) => `
   <div class="relative w-full h-full bg-violet-50 flex items-center justify-center overflow-hidden group">
     ${src ? `<img src="${esc(src)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(src)}')">` : `<span class="text-2xl text-violet-300">🎴</span>`}
@@ -1081,8 +1150,11 @@ async function mudarFotoEstoque(event, id) {
 function adicionarNovoPCAdmin() {
   const atriz = $("inputBuscaArtistaAdmin").value.trim();
   const nomeItem = $("inputBuscaItemAdmin").value.trim();
+  const versao = $("inputBuscaVersaoAdmin").value.trim();
   if (!nomeItem) return alert("Selecione ou digite o nome do item!");
-  const nomeCompleto = atriz ? `${atriz} - ${nomeItem}` : nomeItem;
+
+  const itemComVersao = versao ? `${nomeItem} (${versao})` : nomeItem;
+  const nomeCompleto = atriz ? `${atriz} - ${itemComVersao}` : itemComVersao;
 
   const preco = parseFloat($("pcPreco").value) || 0;
   const pagoCard = $("pcPagoCardCheck").checked;
@@ -1130,6 +1202,8 @@ async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvio
   $("pcAtrizSelecionada").value = "";
   $("inputBuscaItemAdmin").value = "";
   $("pcItemSelecionado").value = "";
+  $("inputBuscaVersaoAdmin").value = "";
+  $("pcVersaoSelecionada").value = "";
   $("pcPreco").value = "";
   $("pcPagoCardCheck").checked = false;
   $("pcLocal").value = "";

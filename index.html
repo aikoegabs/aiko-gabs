@@ -10,10 +10,10 @@
 <style>
   body { font-family: 'Quicksand', system-ui, sans-serif; }
   .fade { animation: fade .35s ease both; }
-  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
-<body class="h-screen overflow-hidden bg-gradient-to-br from-violet-50 via-white to-sky-50 text-slate-700 flex flex-col justify-between">
+<body class="min-h-screen bg-slate-50 text-slate-700 flex flex-col justify-between">
 
 <!-- =====================================================
      🔥 CONFIGURAÇÃO DO FIREBASE
@@ -154,47 +154,53 @@ function iniciarSincronizacaoRealtime() {
 </script>
 <!-- ===================================================== -->
 
-<main class="max-w-4xl mx-auto px-4 py-4 w-full h-full flex flex-col justify-between">
+<main class="max-w-4xl mx-auto px-4 py-6 w-full flex-grow flex flex-col justify-center">
 
-  <!-- HOME -->
-  <section id="home" class="fade text-center flex flex-col justify-center items-center h-full">
-    <div class="w-full">
-      <div class="flex justify-center mb-6">
-        <div id="logoContainer" class="max-w-[260px] sm:max-w-[320px] w-full"></div>
+  <!-- HOME COM ELEMENTOS BEM DISTRIBUÍDOS NA 1ª PÁGINA -->
+  <section id="home" class="fade text-center flex flex-col justify-between items-center h-full max-w-sm mx-auto w-full py-2">
+    
+    <!-- Topo: Logo/Título -->
+    <div class="w-full mb-3">
+      <div class="flex justify-center">
+        <div id="logoContainer" class="max-w-[240px] sm:max-w-[280px] w-full"></div>
       </div>
+    </div>
 
-      <div class="flex justify-center mb-5">
-        <button onclick="show('vitrine')" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full text-sm font-bold text-white bg-violet-600 shadow-md shadow-violet-200 hover:bg-violet-700 hover:scale-105 active:scale-95 transition w-52">
-          <i data-lucide="heart" class="w-4 h-4"></i> Disponíveis
+    <!-- Centro: Botão de Disponíveis + Caixa de Login dos Joiners -->
+    <div class="w-full space-y-4 my-auto">
+      <div class="flex justify-center">
+        <button onclick="show('vitrine')" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white bg-violet-600 shadow-md shadow-violet-200 hover:bg-violet-700 hover:scale-105 active:scale-95 transition w-full max-w-[260px]">
+          <i data-lucide="sparkles" class="w-4 h-4"></i> Disponíveis
         </button>
       </div>
 
       <!-- Caixa de Login do Joiner -->
-      <div class="max-w-sm mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm shadow-violet-100 border border-violet-100 text-left">
-        <h2 class="font-bold text-violet-600 text-sm flex items-center gap-1.5"><i data-lucide="user-round" class="w-4 h-4"></i> Área do Joiner</h2>
-        <p class="text-xs text-slate-500 mt-0.5">Entre com seu usuário e senha para ver seus pedidos.</p>
+      <div class="bg-white rounded-3xl p-5 shadow-md shadow-violet-100 border border-violet-100 text-left w-full">
+        <h2 class="font-bold text-violet-700 text-sm flex items-center gap-2 mb-1"><i data-lucide="user-round" class="w-4 h-4"></i> Área do Joiner</h2>
+        <p class="text-xs text-slate-500 mb-3">Entre com seu usuário e senha para ver seus pedidos.</p>
         
-        <form onsubmit="login(event)" class="mt-3 flex flex-col gap-2">
+        <form onsubmit="login(event)" class="space-y-2.5">
           <input id="user" placeholder="@seuusuario" autocomplete="off"
-            class="w-full px-3.5 py-2.5 rounded-xl bg-violet-50/70 border border-violet-100 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+            class="w-full px-3.5 py-2.5 rounded-2xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
           <input id="pass" type="password" placeholder="Sua senha"
-            class="w-full px-3.5 py-2.5 rounded-xl bg-violet-50/70 border border-violet-100 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
-          <button class="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-xs hover:bg-violet-600 transition">Entrar</button>
+            class="w-full px-3.5 py-2.5 rounded-2xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+          <button class="w-full py-2.5 rounded-2xl bg-violet-500 text-white font-bold text-xs hover:bg-violet-600 transition shadow">Entrar</button>
         </form>
-        <p id="erro" class="hidden mt-1.5 text-xs text-rose-400 text-center">Usuário ou senha incorretos</p>
+        <p id="erro" class="hidden mt-2 text-xs text-rose-500 text-center font-medium">Usuário ou senha incorretos</p>
       </div>
     </div>
 
-    <div class="flex justify-center mt-6">
-      <button onclick="tentarEntrarAdmin()" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold text-violet-400 hover:text-violet-600 bg-white/60 border border-violet-100 shadow-sm hover:bg-violet-50 transition">
-        <i data-lucide="shield-check" class="w-3 h-3"></i> Aiko & Gabs (Admin)
+    <!-- Rodapé da Home: Botão de Admin -->
+    <div class="w-full mt-3">
+      <button onclick="tentarEntrarAdmin()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-violet-500 hover:text-violet-700 bg-violet-50 border border-violet-200 shadow-sm transition">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Aiko & Gabs (Admin)
       </button>
     </div>
   </section>
 
   <!-- VITRINE DE DISPONÍVEIS -->
-  <section id="vitrine" class="hidden fade h-full flex flex-col">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+  <section id="vitrine" class="hidden fade">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
       
       <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
@@ -203,24 +209,23 @@ function iniciarSincronizacaoRealtime() {
       </div>
     </div>
 
-    <div class="mb-3">
-      <h2 class="text-2xl font-bold text-violet-600 mb-0.5">Disponíveis</h2>
-      <p class="text-xs text-slate-500">Itens disponíveis para compra.</p>
+    <div class="mb-4">
+      <h2 class="text-3xl font-bold text-violet-600 mb-1">Disponíveis</h2>
+      <p class="text-slate-500">Itens disponíveis para compra.</p>
     </div>
 
-    <!-- Barra de Filtros e Ordenação Completa -->
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
       <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
         <div class="w-full sm:w-64">
-          <input id="inputBuscaVitrine" oninput="renderVitrineDisponiveis()" placeholder="🔍 Pesquisar photocard..." class="w-full px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+          <input id="inputBuscaVitrine" oninput="renderVitrineDisponiveis()" placeholder="Pesquisar photocard..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
         </div>
         
         <div class="relative">
-          <button onclick="toggleDropdownFiltroExcel()" class="px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs font-bold text-violet-700 hover:bg-violet-50 shadow-sm flex items-center gap-2">
-            <i data-lucide="filter" class="w-3.5 h-3.5 text-violet-500"></i> Filtros <span id="contadorFiltrosExcel" class="bg-violet-100 text-violet-600 text-[10px] px-1.5 py-0.5 rounded-full">Ativos</span>
+          <button onclick="toggleDropdownFiltroExcel()" class="px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm font-bold text-violet-700 hover:bg-violet-50 shadow-sm flex items-center gap-2">
+            <i data-lucide="filter" class="w-4 h-4 text-violet-500"></i> Filtros <span id="contadorFiltrosExcel" class="bg-violet-100 text-violet-600 text-xs px-2 py-0.5 rounded-full">Ativos</span>
           </button>
 
-          <div id="dropdownFiltroExcel" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-violet-100 p-4 z-30 fade max-h-[70vh] overflow-y-auto">
+          <div id="dropdownFiltroExcel" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-violet-100 p-4 z-30 fade max-h-[80vh] overflow-y-auto">
             <div class="mb-4 pb-3 border-b border-violet-100">
               <div class="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                 <span>Atriz / Artista</span>
@@ -283,7 +288,7 @@ function iniciarSincronizacaoRealtime() {
       </div>
 
       <div class="w-full sm:w-auto">
-        <select id="selectOrdenacaoVitrine" onchange="renderVitrineDisponiveis()" class="px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs font-bold text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+        <select id="selectOrdenacaoVitrine" onchange="renderVitrineDisponiveis()" class="px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm font-bold text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
           <option value="padrao">Ordenar por Padrão</option>
           <option value="preco_crescente">Preço Total: Menor ao Maior</option>
           <option value="preco_decrescente">Preço Total: Maior ao Menor</option>
@@ -293,133 +298,181 @@ function iniciarSincronizacaoRealtime() {
       </div>
     </div>
 
-    <div id="gridDisponiveis" class="overflow-y-auto flex-1 pr-1"></div>
+    <div id="gridDisponiveis"></div>
   </section>
 
   <!-- PAINEL ADMIN -->
-  <section id="admin" class="hidden fade h-full flex flex-col overflow-hidden">
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
+  <section id="admin" class="hidden fade">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
       <button onclick="show('home')" class="back mb-0"><i data-lucide="arrow-left" class="w-4 h-4"></i> Sair do Admin</button>
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <span id="badgeAdminLogada" class="px-2.5 py-1 rounded-xl bg-violet-100 text-violet-700 text-xs font-extrabold"></span>
-        <button onclick="abrirModalComprovantesAdmin()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-100 text-sky-700 text-xs font-bold hover:bg-sky-200 transition shadow-sm">
-          <i data-lucide="receipt" class="w-3.5 h-3.5"></i> Comprovantes
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="badgeAdminLogada" class="px-3 py-1.5 rounded-xl bg-violet-100 text-violet-700 text-xs font-extrabold"></span>
+        <button onclick="abrirModalComprovantesAdmin()" class="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-sky-100 text-sky-700 text-xs font-bold hover:bg-sky-200 transition shadow-sm">
+          <i data-lucide="receipt" class="w-4 h-4"></i> Comprovantes
         </button>
-        <button onclick="abrirModalCardsHistoricoAdmin()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-100 text-violet-700 text-xs font-bold hover:bg-violet-200 transition shadow-sm">
-          <i data-lucide="package-check" class="w-3.5 h-3.5"></i> Histórico Cards
+        <button onclick="abrirModalCardsHistoricoAdmin()" class="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-violet-100 text-violet-700 text-xs font-bold hover:bg-violet-200 transition shadow-sm">
+          <i data-lucide="package-check" class="w-4 h-4"></i> Histórico Cards
         </button>
-        <button onclick="abrirModalHistoricoAcoes()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold hover:bg-amber-200 transition shadow-sm">
-          <i data-lucide="activity" class="w-3.5 h-3.5"></i> Atividades
+        <button onclick="abrirModalHistoricoAcoes()" class="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-100 text-amber-800 text-xs font-bold hover:bg-amber-200 transition shadow-sm">
+          <i data-lucide="activity" class="w-4 h-4"></i> Atividades
         </button>
-        <button onclick="abrirModalClientes()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-100 text-sky-700 text-xs font-bold hover:bg-sky-200 transition shadow-sm">
-          <i data-lucide="users" class="w-3.5 h-3.5"></i> Clientes
+        <button onclick="abrirModalClientes()" class="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-sky-100 text-sky-700 text-xs font-bold hover:bg-sky-200 transition shadow-sm">
+          <i data-lucide="users" class="w-4 h-4"></i> Clientes
         </button>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <div>
-        <h2 class="text-2xl font-bold text-violet-600">Painel Privativo · Aiko & Gabs</h2>
-        <p class="text-slate-500 text-xs">Cadastre photocards, clientes e gerencie o estoque.</p>
+        <h2 class="text-3xl font-bold text-violet-600">Painel Privativo · Aiko & Gabs</h2>
+        <p class="text-slate-500 text-sm">Cadastre photocards, clientes e gerencie o estoque.</p>
       </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-4 mb-4 shrink-0">
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
       
       <!-- Cadastrar Novo Photocard -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm shadow-violet-100 border border-violet-100">
-        <h3 class="font-bold text-sm text-violet-700 mb-2 flex items-center gap-1.5"><i data-lucide="sparkles" class="w-4 h-4"></i> Cadastrar Novo Photocard</h3>
-        <div class="space-y-2">
+      <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
+        <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5"></i> Cadastrar Novo Photocard</h3>
+        <div class="space-y-3">
           
           <div class="relative">
-            <div class="flex items-center justify-between mb-0.5">
-              <label class="text-[11px] font-bold text-slate-500">Atriz / Artista</label>
-              <button onclick="abrirModalArtistasConfig()" class="text-[10px] font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                <i data-lucide="settings" class="w-3 h-3"></i> Personalizar Artistas
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Atriz / Artista</label>
+              <button onclick="abrirModalArtistasConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Artistas
               </button>
             </div>
-            <input id="inputBuscaArtistaAdmin" placeholder="🔍 Pesquisar ou selecionar artista..." autocomplete="off" onfocus="abrirDropdownAdmin('Artista')" oninput="filtrarDropdownAdmin('Artista', this.value)" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input id="inputBuscaArtistaAdmin" placeholder="Pesquisar ou selecionar artista..." autocomplete="off" onfocus="abrirDropdownAdmin('Artista')" oninput="filtrarDropdownAdmin('Artista', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcAtrizSelecionada">
-            <div id="dropdownArtistaAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-32 overflow-y-auto z-40 p-1"></div>
+            <div id="dropdownArtistaAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
           </div>
 
           <div class="relative">
-            <div class="flex items-center justify-between mb-0.5">
-              <label class="text-[11px] font-bold text-slate-500">Nome do Item</label>
-              <button onclick="abrirModalItensConfig()" class="text-[10px] font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                <i data-lucide="settings" class="w-3 h-3"></i> Personalizar Itens
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Nome do Item</label>
+              <button onclick="abrirModalItensConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Itens
               </button>
             </div>
-            <input id="inputBuscaItemAdmin" placeholder="🔍 Pesquisar ou selecionar item..." autocomplete="off" onfocus="abrirDropdownAdmin('Item')" oninput="filtrarDropdownAdmin('Item', this.value)" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input id="inputBuscaItemAdmin" placeholder="Pesquisar ou selecionar item..." autocomplete="off" onfocus="abrirDropdownAdmin('Item')" oninput="filtrarDropdownAdmin('Item', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcItemSelecionado">
-            <div id="dropdownItemAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-32 overflow-y-auto z-40 p-1"></div>
+            <div id="dropdownItemAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <div class="flex items-center justify-between mb-0.5">
-                <label class="text-[11px] font-bold text-slate-500">Preço (R$)</label>
-                <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
-                  <input type="checkbox" id="pcPagoCardCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-bold text-slate-500">Preço (R$)</label>
+                <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
+                  <input type="checkbox" id="pcPagoCardCheck" class="rounded accent-violet-600 w-3.5 h-3.5"> Pago
                 </label>
               </div>
-              <input id="pcPreco" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+              <input id="pcPreco" type="number" step="0.01" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
             </div>
             <div>
-              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Caixa</label>
-              <input id="pcLocal" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+              <label class="text-xs font-bold text-slate-500 block mb-1">Caixa</label>
+              <input id="pcLocal" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm">
             </div>
           </div>
 
           <div class="relative">
-            <div class="flex items-center justify-between mb-0.5">
-              <label class="text-[11px] font-bold text-slate-500">Status Inicial</label>
-              <button onclick="abrirModalStatusConfig()" class="text-[10px] font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                <i data-lucide="settings" class="w-3 h-3"></i> Personalizar Status
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-slate-500">Status Inicial</label>
+              <button onclick="abrirModalStatusConfig()" class="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Personalizar Status
               </button>
             </div>
-            <input id="inputBuscaStatusAdmin" placeholder="🔍 Pesquisar ou selecionar status..." autocomplete="off" onfocus="abrirDropdownAdmin('Status')" oninput="filtrarDropdownAdmin('Status', this.value)" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <input id="inputBuscaStatusAdmin" placeholder="Pesquisar ou selecionar status..." autocomplete="off" onfocus="abrirDropdownAdmin('Status')" oninput="filtrarDropdownAdmin('Status', this.value)" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
             <input type="hidden" id="pcStatusSelecionado">
-            <div id="dropdownStatusAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-32 overflow-y-auto z-40 p-1"></div>
+            <div id="dropdownStatusAdmin" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-violet-100 max-h-40 overflow-y-auto z-40 p-1"></div>
           </div>
 
-          <div class="flex items-center gap-2 pt-1">
-            <div class="flex-1">
-              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Foto do Card</label>
-              <input id="pcFotoInput" type="file" accept="image/*" class="w-full px-2 py-1 rounded-xl bg-violet-50 border border-violet-200 text-[11px]">
+          <!-- TAXAS E DATAS LIMITES INICIAIS -->
+          <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-2.5">
+            <span class="text-[11px] font-bold text-violet-700 block">Fretes & Taxas Iniciais (opcional)</span>
+            
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <label class="text-[10px] font-bold text-slate-600">Frete Inter (R$)</label>
+                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="pcPagoFreteInterCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+                  </label>
+                </div>
+                <input id="pcFreteInter" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Frete Inter</label>
+                <input id="pcDataFreteInter" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
             </div>
-            <button onclick="adicionarNovoPCAdmin()" class="px-4 py-2 mt-4 rounded-xl bg-violet-500 text-white font-bold text-xs shadow hover:bg-violet-600 transition shrink-0">
-              Salvar Card
-            </button>
+
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <label class="text-[10px] font-bold text-slate-600">Taxa RF (R$)</label>
+                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="pcPagoTaxaRfCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+                  </label>
+                </div>
+                <input id="pcTaxaRf" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Taxa RF</label>
+                <input id="pcDataTaxaRf" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <label class="text-[10px] font-bold text-slate-600">Frete Nacional (R$)</label>
+                  <label class="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="pcPagoFreteNacCheck" class="rounded accent-violet-600 w-3 h-3"> Pago
+                  </label>
+                </div>
+                <input id="pcFreteNac" type="number" step="0.01" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Prazo Frete Nac</label>
+                <input id="pcDataFreteNac" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-violet-200 text-xs">
+              </div>
+            </div>
           </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-500">Foto do Photocard</label>
+            <input id="pcFotoInput" type="file" accept="image/*" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <button onclick="adicionarNovoPCAdmin()" class="w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm shadow hover:bg-violet-600 transition mt-2">
+            Salvar Photocard no Estoque
+          </button>
         </div>
       </div>
 
       <!-- Cadastrar Nova Cliente -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm shadow-violet-100 border border-violet-100">
-        <h3 class="font-bold text-sm text-violet-700 mb-2 flex items-center gap-1.5"><i data-lucide="user-plus" class="w-4 h-4"></i> Cadastrar Nova Cliente</h3>
-        <div class="space-y-2">
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Usuário</label>
-              <input id="novoUser" placeholder="@camily" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
-            </div>
-            <div>
-              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Nome Completo</label>
-              <input id="novoNome" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
-            </div>
+      <div class="bg-white rounded-3xl p-6 shadow-md shadow-violet-100 border border-violet-100">
+        <h3 class="font-bold text-lg text-violet-700 mb-3 flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5"></i> Cadastrar Nova Cliente</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-bold text-slate-500">Usuário</label>
+            <input id="novoUser" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+            <p class="text-[11px] text-slate-400 mt-1">Pode colocar com ou sem @ (ex: @camily ou camily)</p>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">WhatsApp</label>
-              <input id="novoWpp" placeholder="11984196885" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
-            </div>
-            <div>
-              <label class="text-[11px] font-bold text-slate-500 block mb-0.5">Senha</label>
-              <input id="novaSenha" class="w-full px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs">
-            </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">Nome Completo</label>
+            <input id="novoNome" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
           </div>
-          <button onclick="cadastrarJoinerAdmin()" class="w-full py-2.5 mt-2 rounded-xl bg-sky-500 text-white font-bold text-xs shadow hover:bg-sky-600 transition">
+          <div>
+            <label class="text-xs font-bold text-slate-500">WhatsApp (com DDD, ex: 11999999999)</label>
+            <input id="novoWpp" placeholder="11984196885" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">Senha de Acesso</label>
+            <input id="novaSenha" class="w-full px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-sm mt-1">
+          </div>
+          <button onclick="cadastrarJoinerAdmin()" class="w-full py-3 rounded-xl bg-sky-500 text-white font-bold text-sm shadow hover:bg-sky-600 transition mt-2">
             Cadastrar Cliente
           </button>
         </div>
@@ -427,23 +480,22 @@ function iniciarSincronizacaoRealtime() {
 
     </div>
 
-    <!-- Tabela de Gerenciamento de Estoque por Caixas com Filtro -->
-    <div class="space-y-2 flex-1 overflow-hidden flex flex-col">
-      <div class="flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <h3 class="font-bold text-sm text-violet-700 flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4"></i> Gerenciamento de Estoque</h3>
-        <div class="w-full sm:w-64">
-          <input id="inputBuscaAdmin" oninput="renderTabelaAdmin()" placeholder="🔍 Filtrar por atriz, item ou caixa..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+    <div class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h3 class="font-bold text-xl text-violet-700 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5"></i> Gerenciamento de Estoque por Caixas</h3>
+        <div class="w-full sm:w-72">
+          <input id="inputBuscaAdmin" oninput="renderTabelaAdmin()" placeholder="Filtrar por atriz, item ou caixa..." class="w-full px-4 py-2 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
         </div>
       </div>
-      <div id="containerTabelaAdmin" class="overflow-y-auto flex-1 pr-1"></div>
+      <div id="containerTabelaAdmin"></div>
     </div>
   </section>
 
   <!-- ÁREA DO JOINER -->
-  <section id="joiner" class="hidden fade h-full flex flex-col">
-    <button onclick="show('home')" class="back mb-2"><i data-lucide="log-out" class="w-4 h-4"></i> Sair</button>
-    <div class="flex flex-wrap items-center justify-between gap-4 shrink-0">
-      <h2 class="text-2xl font-bold text-violet-600">Olá, <span id="nomeJoiner"></span>!</h2>
+  <section id="joiner" class="hidden fade">
+    <button onclick="show('home')" class="back"><i data-lucide="log-out" class="w-4 h-4"></i> Sair</button>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h2 class="text-3xl font-bold text-violet-600">Olá, <span id="nomeJoiner"></span>!</h2>
       
       <div class="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-violet-100">
         <button onclick="mudarLayout('grid')" id="btnLayoutGrid" class="p-2 rounded-xl text-violet-600 bg-violet-100 font-bold text-xs flex items-center gap-1 transition"><i data-lucide="layout-grid" class="w-4 h-4"></i> Grade</button>
@@ -451,19 +503,20 @@ function iniciarSincronizacaoRealtime() {
       </div>
     </div>
 
-    <div class="mt-4 flex flex-wrap items-center justify-end gap-4 shrink-0">
+    <div class="mt-6 flex flex-wrap items-center justify-end gap-4">
       <div class="w-full sm:w-72">
-        <input id="inputBusca" oninput="atualizarFiltroJoiner()" placeholder="🔍 Pesquisar meus photocards ou caixa..." class="w-full px-3.5 py-2 rounded-xl bg-white border border-violet-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
+        <input id="inputBusca" oninput="atualizarFiltroJoiner()" placeholder="Pesquisar meus photocards ou caixa..." class="w-full px-4 py-2.5 rounded-2xl bg-white border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 shadow-sm">
       </div>
     </div>
 
-    <div id="containerAreaCliente" class="mt-4 overflow-y-auto flex-1 pr-1"></div>
+    <div id="containerAreaCliente" class="mt-6"></div>
   </section>
 
-  <footer class="mt-2 text-center text-[11px] text-slate-400 shrink-0">
-    © <span id="ano"></span> Aiko & Gabs · feito com 💜💙
-  </footer>
 </main>
+
+<footer class="mt-6 text-center text-xs text-slate-400 py-3">
+  © <span id="ano"></span> Aiko & Gabs · feito com carinho! 💜💙
+</footer>
 
 <!-- MODAL DE MOTIVO DA REJEIÇÃO -->
 <div id="modalRejeicao" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-60">
@@ -559,7 +612,6 @@ function iniciarSincronizacaoRealtime() {
         </div>
       </div>
 
-      <!-- STATUS DE PAGAMENTO EDITÁVEIS -->
       <div class="p-3 rounded-2xl bg-violet-50/50 border border-violet-100 space-y-3">
         <span class="text-xs font-bold text-violet-700 block">Status de Pagamento dos Itens</span>
         
@@ -788,7 +840,7 @@ function iniciarSincronizacaoRealtime() {
     </div>
     <div class="mb-3">
       <label class="text-xs font-bold text-slate-500 mb-1 block">Vincular a uma Joiner:</label>
-      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="🔍 Digite o nome ou @ da joiner..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+      <input id="inputFiltroCliente" oninput="filtrarListaClientesModal(this.value)" placeholder="Digite o nome ou @ da joiner..." class="w-full px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
     </div>
     <div id="listaClientesModal" class="max-h-56 overflow-y-auto space-y-1 pr-1 divide-y divide-violet-50"></div>
   </div>
@@ -837,7 +889,7 @@ function tentarEntrarAdmin() {
     return;
   }
 
-  $("badgeAdminLogada").textContent = `👩‍💻 ${ADMIN_LOGADO}`;
+  $("badgeAdminLogada").textContent = `Admin: ${ADMIN_LOGADO}`;
   show('admin');
   renderTabelaAdmin();
   renderizarGerenciadorStatus();
@@ -1037,25 +1089,37 @@ function adicionarNovoPCAdmin() {
   const local = $("pcLocal").value.trim() || "Geral";
   const statusEnvioId = $("pcStatusSelecionado").value;
 
+  const freteInter = parseFloat($("pcFreteInter").value) || 0;
+  const pagoFreteInter = $("pcPagoFreteInterCheck").checked;
+  const dataFreteInter = $("pcDataFreteInter").value.trim();
+
+  const taxaRf = parseFloat($("pcTaxaRf").value) || 0;
+  const pagoTaxaRf = $("pcPagoTaxaRfCheck").checked;
+  const dataTaxaRf = $("pcDataTaxaRf").value.trim();
+
+  const freteNac = parseFloat($("pcFreteNac").value) || 0;
+  const pagoFreteNac = $("pcPagoFreteNacCheck").checked;
+  const dataFreteNac = $("pcDataFreteNac").value.trim();
+
   const fileInput = $("pcFotoInput");
 
   if (fileInput.files && fileInput.files[0]) {
     const reader = new FileReader();
     reader.onload = function(e) {
-      salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, e.target.result);
+      salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, e.target.result);
     };
     reader.readAsDataURL(fileInput.files[0]);
   } else {
-    salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, "");
+    salvarNovoItemNoEstoque(nomeCompleto, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, "");
   }
 }
 
-async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvioId, fotoBase64) {
+async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvioId, freteInter, pagoFreteInter, dataFreteInter, taxaRf, pagoTaxaRf, dataTaxaRf, freteNac, pagoFreteNac, dataFreteNac, fotoBase64) {
   const id = "pc_" + Date.now();
   const novoCard = {
     id, nome, foto: fotoBase64, preco, status: "standby", local,
-    freteInter: 0, dataFreteInter: "", taxaRf: 0, dataTaxaRf: "", freteNac: 0, dataFreteNac: "",
-    pagoCard, pagoFreteInter: false, pagoTaxaRf: false, pagoFreteNac: false, statusEnvioId, rastreio: ""
+    freteInter, dataFreteInter, taxaRf, dataTaxaRf, freteNac, dataFreteNac,
+    pagoCard, pagoFreteInter, pagoTaxaRf, pagoFreteNac, statusEnvioId, rastreio: ""
   };
   if (window.db) {
     await window.setDoc(window.doc(window.db, "estoque", id), novoCard);
@@ -1071,6 +1135,15 @@ async function salvarNovoItemNoEstoque(nome, preco, pagoCard, local, statusEnvio
   $("pcLocal").value = "";
   $("inputBuscaStatusAdmin").value = "";
   $("pcStatusSelecionado").value = "";
+  $("pcFreteInter").value = "";
+  $("pcPagoFreteInterCheck").checked = false;
+  $("pcDataFreteInter").value = "";
+  $("pcTaxaRf").value = "";
+  $("pcPagoTaxaRfCheck").checked = false;
+  $("pcDataTaxaRf").value = "";
+  $("pcFreteNac").value = "";
+  $("pcPagoFreteNacCheck").checked = false;
+  $("pcDataFreteNac").value = "";
   $("pcFotoInput").value = "";
   alert("Photocard cadastrado em Standby com sucesso!");
 }
@@ -1511,7 +1584,7 @@ function renderizarHistoricoComprovantesAdmin() {
 
     if (comp.statusAprovacao === 'aprovado') {
       badgeStatus = `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">Aprovado</span>`;
-      linkZap = wppLimpo ? `https://wa.me/55${wppLimpo.replace(/^55/, '')}?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Seu pagamento no valor de ${brl(comp.total)} referente a (${comp.itensNomes.join(", ")}) foi aprovado! Muito obrigada!`) : `https://wa.me/?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Seu pagamento no valor de ${brl(comp.total)} referente a (${comp.itensNomes.join(", ")}) foi aprovado! Muito obrigada!`);
+      linkZap = wppLimpo ? `https://wa.me/55${wppLimpo.replace(/^55/, '')}?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Seu pagamento no valor de ${brl(comp.total)} referente a (${comp.itensNomes.join(", ")}) foi aprovado com sucesso! Muito obrigada!`) : `https://wa.me/?text=` + encodeURIComponent(`Oiee @${comp.clienteKey}! Seu pagamento no valor de ${brl(comp.total)} referente a (${comp.itensNomes.join(", ")}) foi aprovado com sucesso! Muito obrigada!`);
     } else {
       badgeStatus = `<span class="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold">Rejeitado</span>`;
       if (comp.motivoRejeicao) {
@@ -1882,7 +1955,7 @@ function toggleCaixaAdmin(nomeCaixa) {
 
 function renderTabelaAdmin() {
   if (!ESTOQUE_GERAL.length) {
-    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-2xl p-4 text-center text-slate-400 border border-violet-100 text-xs">Nenhum photocard cadastrado no estoque ainda.</div>`;
+    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-3xl p-6 text-center text-slate-400 border border-violet-100">Nenhum photocard cadastrado no estoque ainda.</div>`;
     return;
   }
 
@@ -1902,7 +1975,7 @@ function renderTabelaAdmin() {
   });
 
   if (Object.keys(caixasMap).length === 0) {
-    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-2xl p-4 text-center text-slate-400 border border-violet-100 text-xs">Nenhum photocard encontrado com esse filtro.</div>`;
+    $("containerTabelaAdmin").innerHTML = `<div class="bg-white rounded-3xl p-6 text-center text-slate-400 border border-violet-100">Nenhum photocard encontrado com esse filtro.</div>`;
     return;
   }
 
@@ -1915,31 +1988,39 @@ function renderTabelaAdmin() {
     let tabelaItensHtml = "";
     if (aberta) {
       tabelaItensHtml = `
-        <div class="overflow-x-auto p-3 bg-violet-50/30">
+        <div class="overflow-x-auto p-4 bg-violet-50/30">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="border-b border-violet-100 text-[11px] font-bold text-violet-400 uppercase">
-                <th class="py-2 px-2">Foto</th>
-                <th class="py-2 px-2">Nome / Preço & Pagamento</th>
-                <th class="py-2 px-2">Joiner / Disponível</th>
-                <th class="py-2 px-2 text-right">Ações</th>
+              <tr class="border-b border-violet-100 text-xs font-bold text-violet-400 uppercase">
+                <th class="py-3 px-2">Foto</th>
+                <th class="py-3 px-2">Nome / Preço & Pagamento</th>
+                <th class="py-3 px-2">Joiner / Disponível</th>
+                <th class="py-3 px-2 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody class="text-xs divide-y divide-violet-50">
+            <tbody class="text-sm divide-y divide-violet-50">
               ${listaItens.map(pc => {
                 let badgeStatus = "";
                 if (pc.status === 'standby') {
-                  badgeStatus = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-100 text-amber-800 font-bold text-[11px]">Standby (Oculto)</span>`;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-800 font-bold text-xs">Standby (Oculto)</span>`;
                 } else if (pc.status === 'disponivel') {
-                  badgeStatus = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-[11px]">Disponível (Vitrine)</span>`;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs">Disponível (Vitrine)</span>`;
                 } else {
                   const cli = JOINERS[pc.status];
                   const nomeCli = cli ? cli.nome : pc.status;
-                  badgeStatus = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-violet-100 text-violet-800 font-bold text-[11px]">@${esc(pc.status)} (${esc(nomeCli)})</span>`;
+                  badgeStatus = `<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-100 text-violet-800 font-bold text-xs">@${esc(pc.status)} (${esc(nomeCli)})</span>`;
                 }
 
-                const badgePagoCard = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold select-none ${pc.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoCard ? 'Pago' : 'Não pago'}</span>`;
+                const badgePagoCard = `<span class="px-2 py-0.5 rounded text-[10px] font-bold select-none ${pc.pagoCard ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoCard ? 'Pago' : 'Não pago'}</span>`;
                 
+                const fInter = Number(pc.freteInter) || 0;
+                const tRf = Number(pc.taxaRf) || 0;
+                const fNac = Number(pc.freteNac) || 0;
+
+                const badgePagoFInter = fInter > 0 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold select-none ${pc.pagoFreteInter ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoFreteInter ? 'Pago' : 'Não pago'}</span>` : '';
+                const badgePagoTRf = tRf > 0 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold select-none ${pc.pagoTaxaRf ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoTaxaRf ? 'Pago' : 'Não pago'}</span>` : '';
+                const badgePagoFNac = fNac > 0 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold select-none ${pc.pagoFreteNac ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${pc.pagoFreteNac ? 'Pago' : 'Não pago'}</span>` : '';
+
                 let statusOptions = `<option value="">Nenhum status</option>`;
                 STATUS_PERSONALIZADOS.forEach(s => {
                   statusOptions += `<option value="${s.id}" ${pc.statusEnvioId === s.id ? 'selected' : ''}>${s.nome}</option>`;
@@ -1947,30 +2028,36 @@ function renderTabelaAdmin() {
 
                 return `
                   <tr class="hover:bg-violet-50/40 transition">
-                    <td class="py-2.5 px-2 w-12">
-                      <div class="w-10 h-14 rounded-xl overflow-hidden relative shadow-sm">${renderImgBox(pc.foto, pc.id)}</div>
+                    <td class="py-3 px-2 w-14">
+                      <div class="w-12 h-16 rounded-xl overflow-hidden relative shadow-sm">${renderImgBox(pc.foto, pc.id)}</div>
                     </td>
-                    <td class="py-2.5 px-2">
+                    <td class="py-3 px-2">
                       <div class="font-bold text-slate-700">${esc(pc.nome)}</div>
-                      <div class="text-[11px] text-violet-600 font-bold flex items-center gap-2 mt-0.5">
+                      <div class="text-xs text-violet-600 font-bold flex items-center gap-2 mt-0.5">
                         ${brl(pc.preco)} ${badgePagoCard}
                       </div>
-                      <div class="mt-1.5">
-                        <select onchange="alterarStatusEnvioCard('${pc.id}', this.value)" class="text-[10px] px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 font-bold text-violet-700">
+                      <div class="mt-1.5 text-[11px] text-slate-500 space-y-1">
+                        ${fInter > 0 ? `<div>Frete Inter: <b>${brl(fInter)}</b> ${badgePagoFInter}</div>` : ''}
+                        ${tRf > 0 ? `<div>Taxa RF: <b>${brl(tRf)}</b> ${badgePagoTRf}</div>` : ''}
+                        ${fNac > 0 ? `<div>Frete Nac: <b>${brl(fNac)}</b> ${badgePagoFNac}</div>` : ''}
+                      </div>
+                      <div class="mt-2">
+                        <select onchange="alterarStatusEnvioCard('${pc.id}', this.value)" class="text-[11px] px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 font-bold text-violet-700">
                           ${statusOptions}
                         </select>
                       </div>
+                      ${pc.rastreio ? `<div class="mt-1.5 text-[11px] text-teal-700 font-bold">Rastreio: ${esc(pc.rastreio)}</div>` : ''}
                     </td>
-                    <td class="py-2.5 px-2">
-                      <button onclick="abrirModalStatus('${pc.id}')" class="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white border border-violet-200 shadow-sm hover:bg-violet-50 transition text-[11px] font-bold text-violet-700">
+                    <td class="py-3 px-2">
+                      <button onclick="abrirModalStatus('${pc.id}')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-violet-200 shadow-sm hover:bg-violet-50 transition text-xs font-bold text-violet-700">
                         ${badgeStatus}
-                        <i data-lucide="chevron-down" class="w-3 h-3 ml-1"></i>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 ml-1"></i>
                       </button>
                     </td>
-                    <td class="py-2.5 px-2 text-right space-x-1">
-                      <button onclick="abrirModalEditar('${pc.id}')" class="px-2 py-1 rounded-lg bg-violet-100 text-violet-600 text-[11px] font-bold hover:bg-violet-200 transition">Editar</button>
-                      <button onclick="moverCardParaHistorico('${pc.id}')" class="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold hover:bg-emerald-200 transition">Chegou</button>
-                      <button onclick="excluirPC('${pc.id}')" class="text-rose-400 hover:text-rose-600 font-bold p-1">✕</button>
+                    <td class="py-3 px-2 text-right space-x-1">
+                      <button onclick="abrirModalEditar('${pc.id}')" class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-600 text-xs font-bold hover:bg-violet-200 transition">Editar</button>
+                      <button onclick="moverCardParaHistorico('${pc.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-bold hover:bg-emerald-200 transition" title="Marcar como chegado/histórico">Chegou</button>
+                      <button onclick="excluirPC('${pc.id}')" class="text-rose-400 hover:text-rose-600 font-bold p-1" title="Excluir item">✕</button>
                     </td>
                   </tr>
                 `;
@@ -1982,14 +2069,14 @@ function renderTabelaAdmin() {
     }
 
     htmlCaixas += `
-      <div class="bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden mb-3">
-        <button onclick="toggleCaixaAdmin('${esc(caixaNome)}')" class="w-full px-4 py-3 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
-          <div class="flex items-center gap-2">
-            <i data-lucide="package" class="w-4 h-4 text-violet-600"></i>
-            <span class="font-bold text-xs text-violet-800">${esc(caixaNome)}</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
+      <div class="bg-white rounded-3xl shadow-md shadow-violet-100 border border-violet-100 overflow-hidden mb-4">
+        <button onclick="toggleCaixaAdmin('${esc(caixaNome)}')" class="w-full px-5 py-4 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
+            <span class="font-bold text-base text-violet-800">${esc(caixaNome)}</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
           </div>
-          <i data-lucide="chevron-down" class="w-4 h-4 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
         </button>
         ${tabelaItensHtml}
       </div>
@@ -2139,32 +2226,41 @@ function renderVitrineDisponiveis() {
   });
 
   if (!disponiveis.length) {
-    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full text-center py-8 text-xs">Nenhum item disponível encontrado</p>`;
+    $("gridDisponiveis").innerHTML = `<p class="text-slate-400 col-span-full text-center py-8">Nenhum item disponível encontrado</p>`;
     return;
   }
 
   if (layoutVitrineAtual === 'grid') {
-    $("gridDisponiveis").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">${disponiveis.map(p => {
+    $("gridDisponiveis").innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">${disponiveis.map(p => {
       const precoCard = Number(p.preco) || 0;
-      const totalItem = precoCard + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
+      const fInter = Number(p.freteInter) || 0;
+      const tRf = Number(p.taxaRf) || 0;
+      const fNac = Number(p.freteNac) || 0;
+      const totalItem = precoCard + fInter + tRf + fNac;
+
+      const txtFInter = fInter > 0 ? `<div class="text-xs text-slate-600">Frete Inter: <b>${brl(fInter)}</b></div>` : '';
+      const txtTRf = tRf > 0 ? `<div class="text-xs text-slate-600">Taxa RF: <b>${brl(tRf)}</b></div>` : '';
+      const txtFNac = fNac > 0 ? `<div class="text-xs text-slate-600">Frete Nac: <b>${brl(fNac)}</b></div>` : '';
 
       return `
-        <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
+        <article class="bg-white rounded-3xl overflow-hidden shadow-md shadow-violet-100 border border-violet-100 flex flex-col justify-between">
           <div>
-            <div class="px-2.5 py-1 bg-gradient-to-r from-violet-100 to-sky-100 text-[9px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
+            <div class="px-3 py-1.5 bg-gradient-to-r from-violet-100 to-sky-100 text-[10px] font-bold uppercase tracking-wide text-violet-600 flex items-center gap-1">
               <i data-lucide="package" class="w-3 h-3"></i>${esc(p.local)}
             </div>
             <div class="aspect-[3/4] relative bg-violet-50">
-              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-3xl text-violet-300">🎴</div>`}
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
             </div>
-            <div class="p-2.5">
-              <h3 class="font-bold text-xs leading-tight">${esc(p.nome)}</h3>
-              <div class="mt-1.5 text-xs font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
+            <div class="p-3">
+              <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
+              <div class="mt-2 text-xs text-slate-600">Card: <b>${brl(precoCard)}</b></div>
+              <div class="mt-1 space-y-0.5">${txtFInter}${txtTRf}${txtFNac}</div>
+              <div class="mt-3 pt-2 border-t border-violet-100 text-base font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
             </div>
           </div>
-          <div class="p-2.5 pt-0">
-            <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm transition">
-              <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Comprar
+          <div class="p-3 pt-0">
+            <a href="${gerarLinkZap(p)}" target="_blank" class="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+              <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
             </a>
           </div>
         </article>
@@ -2172,22 +2268,26 @@ function renderVitrineDisponiveis() {
     }).join("")}</div>`;
   } else {
     $("gridDisponiveis").innerHTML = `<div class="space-y-2">${disponiveis.map(p => {
-      const totalItem = (Number(p.preco) || 0) + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
+      const precoCard = Number(p.preco) || 0;
+      const fInter = Number(p.freteInter) || 0;
+      const tRf = Number(p.taxaRf) || 0;
+      const fNac = Number(p.freteNac) || 0;
+      const totalItem = precoCard + fInter + tRf + fNac;
 
       return `
-        <article class="bg-white rounded-xl shadow-sm border border-violet-100 p-2.5 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5">
-            <div class="w-10 h-14 rounded-lg overflow-hidden bg-violet-50 shrink-0 relative">
-              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-base text-violet-300">🎴</div>`}
+        <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-16 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
+              ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
             </div>
             <div>
-              <span class="text-[9px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
-              <h3 class="font-bold text-xs text-slate-800 mt-0.5">${esc(p.nome)}</h3>
-              <p class="text-xs font-bold text-violet-600 mt-0.5">${brl(totalItem)}</p>
+              <span class="text-[10px] font-bold uppercase tracking-wide text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">${esc(p.local)}</span>
+              <h3 class="font-bold text-sm text-slate-800 mt-1">${esc(p.nome)}</h3>
+              <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
             </div>
           </div>
-          <a href="${gerarLinkZap(p)}" target="_blank" class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition shrink-0">
-            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Comprar
+          <a href="${gerarLinkZap(p)}" target="_blank" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0">
+            <i data-lucide="message-circle" class="w-4 h-4"></i> Comprar
           </a>
         </article>
       `;
@@ -2235,15 +2335,15 @@ function renderizarConteudoCliente() {
   if (busca) meusPCs = meusPCs.filter(x => x.nome.toLowerCase().includes(busca) || x.local.toLowerCase().includes(busca));
 
   let botaoComprovanteHtml = `
-    <div class="mb-3 flex justify-end shrink-0">
-      <button onclick="abrirModalEnviarComprovante()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 text-white font-bold text-xs shadow-sm hover:brightness-105 transition">
-        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Enviar Comprovante de Pagamento
+    <div class="mb-4 flex justify-end">
+      <button onclick="abrirModalEnviarComprovante()" class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 text-white font-bold text-sm shadow-md shadow-violet-200 hover:brightness-105 transition">
+        <i data-lucide="upload" class="w-4 h-4"></i> Enviar Comprovante de Pagamento
       </button>
     </div>
   `;
 
   if (!meusPCs.length) {
-    $("containerAreaCliente").innerHTML = `${botaoComprovanteHtml}<p class="text-slate-400 text-center py-6 text-xs">Você ainda não tem itens comprados vinculados</p>`;
+    $("containerAreaCliente").innerHTML = `${botaoComprovanteHtml}<p class="text-slate-400 text-center py-8">Você ainda não tem itens comprados vinculados</p>`;
     lucide.createIcons();
     return;
   }
@@ -2264,49 +2364,83 @@ function renderizarConteudoCliente() {
     let conteudoCaixaHtml = "";
     if (aberta) {
       if (layoutAtual === 'grid') {
-        conteudoCaixaHtml = `<div class="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-violet-50/30">${listaItens.map(p => {
+        conteudoCaixaHtml = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-violet-50/30">${listaItens.map(p => {
           const precoCard = Number(p.preco) || 0;
-          const totalItem = precoCard + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
+          const fInter = Number(p.freteInter) || 0;
+          const tRf = Number(p.taxaRf) || 0;
+          const fNac = Number(p.freteNac) || 0;
+          const totalItem = precoCard + fInter + tRf + fNac;
           
           const badgeCard = selo(p.pagoCard);
+          
+          const badgeFInter = fInter > 0 ? `
+            <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
+              <span>Frete Inter: <b>${brl(fInter)}</b> ${p.dataFreteInter ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataFreteInter)})</span>` : ''}</span>
+              ${selo(p.pagoFreteInter)}
+            </div>` : '';
+
+          const badgeTRf = tRf > 0 ? `
+            <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
+              <span>Taxa RF: <b>${brl(tRf)}</b> ${p.dataTaxaRf ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataTaxaRf)})</span>` : ''}</span>
+              ${selo(p.pagoTaxaRf)}
+            </div>` : '';
+
+          const badgeFNac = fNac > 0 ? `
+            <div class="flex items-center justify-between text-xs w-full bg-white p-1.5 rounded-xl border border-violet-100">
+              <span>Frete Nac: <b>${brl(fNac)}</b> ${p.dataFreteNac ? `<span class="text-[10px] text-amber-600">(Até ${esc(p.dataFreteNac)})</span>` : ''}</span>
+              ${selo(p.pagoFreteNac)}
+            </div>` : '';
+
           let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
-          let statusEnvioBadge = statusObj ? `<div class="mt-1 text-[11px] font-bold px-2 py-0.5 rounded border inline-block ${statusObj.cor}">${esc(statusObj.nome)}</div>` : '';
+          let statusEnvioBadge = statusObj ? `<div class="mt-2 text-xs font-bold px-2.5 py-1 rounded-lg border inline-block ${statusObj.cor}">Status: ${esc(statusObj.nome)}</div>` : '';
+
+          let rastreioHtml = p.rastreio ? `<div class="mt-2 text-xs font-bold text-teal-800 bg-teal-50 p-2 rounded-xl border border-teal-200">Rastreio: <b>${esc(p.rastreio)}</b></div>` : '';
 
           let podeMarcarChegado = p.pagoFreteNac && p.statusEnvioId === 'indo_casa';
           let botaoChegouCliente = podeMarcarChegado ? `
-            <div class="mt-2">
-              <button onclick="marcarChegadoCliente('${p.id}')" class="w-full py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] shadow-sm transition flex items-center justify-center gap-1">
-                <i data-lucide="package-check" class="w-3.5 h-3.5"></i> Chegou!
+            <div class="mt-3">
+              <button onclick="marcarChegadoCliente('${p.id}')" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+                <i data-lucide="package-check" class="w-4 h-4"></i> Já Chegou / Recebi!
               </button>
             </div>
           ` : '';
 
           return `
-            <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
+            <article class="bg-white rounded-3xl overflow-hidden shadow-sm border border-violet-100 flex flex-col justify-between">
               <div>
                 <div class="aspect-[3/4] relative bg-violet-50">
-                  ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-3xl text-violet-300">🎴</div>`}
+                  ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-4xl text-violet-300">🎴</div>`}
                 </div>
-                <div class="p-2.5">
-                  <h3 class="font-bold text-xs leading-tight">${esc(p.nome)}</h3>
-                  <div class="mt-1 flex items-center justify-between">
-                    <span class="text-[11px] text-slate-600">Card: ${brl(precoCard)}</span>
+                <div class="p-3">
+                  <h3 class="font-bold text-sm leading-tight">${esc(p.nome)}</h3>
+                  <div class="mt-2 flex items-center justify-between">
+                    <span class="text-xs text-slate-600">Card: ${brl(precoCard)}</span>
                     ${badgeCard}
                   </div>
+                  <div class="mt-2 pt-2 border-t border-dashed border-violet-100 text-xs space-y-1.5 flex flex-col items-start w-full">
+                    ${badgeFInter}${badgeTRf}${badgeFNac}
+                  </div>
                   ${statusEnvioBadge}
+                  ${rastreioHtml}
                   ${botaoChegouCliente}
-                  <div class="mt-2 pt-1.5 border-t border-violet-100 text-xs font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
+                  <div class="mt-3 pt-2 border-t border-violet-100 text-base font-extrabold text-violet-600">Total: ${brl(totalItem)}</div>
                 </div>
               </div>
             </article>
           `;
         }).join("")}</div>`;
       } else {
-        conteudoCaixaHtml = `<div class="space-y-2 p-3 bg-violet-50/30">${listaItens.map(p => {
-          const totalItem = (Number(p.preco) || 0) + (Number(p.freteInter) || 0) + (Number(p.taxaRf) || 0) + (Number(p.freteNac) || 0);
+        conteudoCaixaHtml = `<div class="space-y-2 p-4 bg-violet-50/30">${listaItens.map(p => {
+          const precoCard = Number(p.preco) || 0;
+          const fInter = Number(p.freteInter) || 0;
+          const tRf = Number(p.taxaRf) || 0;
+          const fNac = Number(p.freteNac) || 0;
+          const totalItem = precoCard + fInter + tRf + fNac;
+
           const badgeCard = selo(p.pagoCard);
           let statusObj = STATUS_PERSONALIZADOS.find(s => s.id === p.statusEnvioId);
-          let statusEnvioBadge = statusObj ? `<span class="ml-2 text-[11px] font-bold px-2 py-0.5 rounded border ${statusObj.cor}">${esc(statusObj.nome)}</span>` : '';
+          let statusEnvioBadge = statusObj ? `<span class="ml-2 text-xs font-bold px-2 py-0.5 rounded border ${statusObj.cor}">Status: ${esc(statusObj.nome)}</span>` : '';
+          let rastreioHtml = p.rastreio ? `<div class="text-xs font-bold text-teal-800 mt-1">Rastreio: ${esc(p.rastreio)}</div>` : '';
 
           let podeMarcarChegado = p.pagoFreteNac && p.statusEnvioId === 'indo_casa';
           let botaoChegouCliente = podeMarcarChegado ? `
@@ -2316,18 +2450,19 @@ function renderizarConteudoCliente() {
           ` : '';
 
           return `
-            <article class="bg-white rounded-xl shadow-sm border border-violet-100 p-2.5 flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2.5">
-                <div class="w-10 h-14 rounded-lg overflow-hidden bg-violet-50 shrink-0 relative">
-                  ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-base text-violet-300">🎴</div>`}
+            <article class="bg-white rounded-2xl shadow-sm border border-violet-100 p-3 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-16 rounded-xl overflow-hidden bg-violet-50 shrink-0 relative">
+                  ${p.foto ? `<img src="${esc(p.foto)}" class="w-full h-full object-cover zoomable" onclick="abrirZoom('${esc(p.foto)}')">` : `<div class="w-full h-full flex items-center justify-center text-lg text-violet-300">🎴</div>`}
                 </div>
                 <div>
-                  <div class="flex items-center gap-1.5">
-                    <h3 class="font-bold text-xs text-slate-800">${esc(p.nome)}</h3>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-sm text-slate-800">${esc(p.nome)}</h3>
                     ${badgeCard}
                     ${statusObj ? statusEnvioBadge : ''}
                   </div>
-                  <p class="text-xs font-bold text-violet-600 mt-0.5">${brl(totalItem)}</p>
+                  ${rastreioHtml}
+                  <p class="text-sm font-bold text-violet-600 mt-1">${brl(totalItem)} <span class="text-xs text-slate-400 font-normal">total</span></p>
                 </div>
               </div>
               ${botaoChegouCliente}
@@ -2338,14 +2473,14 @@ function renderizarConteudoCliente() {
     }
 
     htmlCaixas += `
-      <div class="bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden mb-3">
-        <button onclick="toggleCaixa('${esc(caixaNome)}')" class="w-full px-4 py-3 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
-          <div class="flex items-center gap-2">
-            <i data-lucide="package" class="w-4 h-4 text-violet-600"></i>
-            <span class="font-bold text-xs text-violet-800">${esc(caixaNome)}</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
+      <div class="bg-white rounded-3xl shadow-md shadow-violet-100 border border-violet-100 overflow-hidden mb-4">
+        <button onclick="toggleCaixa('${esc(caixaNome)}')" class="w-full px-5 py-4 bg-gradient-to-r from-violet-100 to-sky-100 flex items-center justify-between text-left hover:brightness-95 transition">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
+            <span class="font-bold text-base text-violet-800">${esc(caixaNome)}</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500 text-white">${qtd} ${qtd === 1 ? 'card' : 'cards'}</span>
           </div>
-          <i data-lucide="chevron-down" class="w-4 h-4 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-violet-600 transition-transform ${aberta ? 'rotate-180' : ''}"></i>
         </button>
         ${conteudoCaixaHtml}
       </div>
@@ -2356,7 +2491,9 @@ function renderizarConteudoCliente() {
 }
 
 function show(id) {
-  ["home", "vitrine", "admin", "joiner"].forEach(s => $(s).classList.toggle("hidden", s !== id));
+  ["home", "vitrine", "admin", "joiner"].forEach(s => {
+    if ($(s)) $(s).classList.toggle("hidden", s !== id);
+  });
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (id === 'vitrine') renderVitrineDisponiveis();
   lucide.createIcons();
@@ -2365,7 +2502,7 @@ function show(id) {
 if (LOJA.logoUrl) {
   $("logoContainer").innerHTML = `<img src="${esc(LOJA.logoUrl)}" alt="${esc(LOJA.nome)}" class="w-full h-auto object-contain drop-shadow-sm">`;
 } else {
-  $("logoContainer").innerHTML = `<h1 class="text-3xl sm:text-4xl font-extrabold text-violet-600 drop-shadow-sm">${esc(LOJA.nome)}</h1>`;
+  $("logoContainer").innerHTML = `<h1 class="text-4xl sm:text-5xl font-extrabold text-violet-600 drop-shadow-sm">${esc(LOJA.nome)}</h1>`;
 }
 
 $("ano").textContent = new Date().getFullYear();
